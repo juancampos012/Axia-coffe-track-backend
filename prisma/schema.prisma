@@ -1,0 +1,211 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Sector {
+  RETAIL
+  TECHNOLOGY
+  FOOD
+  HEALTH
+}
+
+model Company {
+  id          String    @id @default(uuid())
+  nit         String
+  name        String
+  address     String
+  phone       String
+  currentBalance Float   @default(0)
+  sector      Sector    @default(FOOD)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  clients      Client[]
+  invoices     SaleInvoice[]
+  products     Product[]
+  users        User[]
+  suppliers    Supplier[]
+  payments     Payment[]
+  purchases    PurchaseInvoice[]
+  saleProductInvoices SaleProductInvoice[]
+  purchaseProductInvoices PurchaseProductInvoice[]
+  supplierDeposits SupplierDeposit[]
+}
+
+model Client {w
+  id             String    @id @default(uuid())
+  tenantId       String
+  identification String
+  firstName      String
+  lastName       String
+  email          String    @unique
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relations
+  tenant      Company      @relation(fields: [tenantId], references: [id])
+  invoices    SaleInvoice[]
+}
+
+model SaleInvoice {
+  id                  String    @id @default(uuid())
+  tenantId            String
+  clientId            String
+  paymentId           String? 
+  date                DateTime
+  totalPrice          Float
+  electronicBill      Boolean @default(false)
+  payment             Payment?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  // Relations
+  tenant              Company      @relation(fields: [tenantId], references: [id])
+  client              Client       @relation(fields: [clientId], references: [id])
+  invoiceProducts     SaleProductInvoice[]
+}
+
+model SaleProductInvoice {
+  id            String    @id @default(uuid())
+  tenantId      String
+  productId     String
+  invoiceId     String? 
+  quantity      Float
+
+  // Relations
+  tenant      Company      @relation(fields: [tenantId], references: [id])
+  product     Product      @relation(fields: [productId], references: [id])
+  invoice     SaleInvoice?      @relation(fields: [invoiceId], references: [id])
+}
+
+model Product {
+  id            String    @id @default(uuid())
+  tenantId      String
+  supplierId    String
+  name          String
+  description   String?
+  salePrice     Float?
+  purchasePrice Float?
+  tax           Float?
+  stock         Float
+  isDeleted     Boolean   @default(false)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  tenant            Company      @relation(fields: [tenantId], references: [id])
+  supplier          Supplier     @relation(fields: [supplierId], references: [id])
+  saleProductInvoices   SaleProductInvoice[]
+  purchaseProductInvoices   PurchaseProductInvoice[]
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  USER
+  EDITOR
+}
+
+model User {
+  id          String    @id @default(uuid())
+  tenantId    String?
+  name        String
+  email       String    @unique
+  password    String
+  role        Role      @default(USER)
+  avatar      String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Company?      @relation(fields: [tenantId], references: [id])
+}
+
+model Supplier {
+  id          String    @id @default(uuid())
+  tenantId    String
+  nit         String
+  name        String
+  phone       String
+  address     String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  // Relations
+  tenant      Company      @relation(fields: [tenantId], references: [id])
+  products    Product[]
+  purchases   PurchaseInvoice[]
+  supplierDeposits SupplierDeposit[]
+}
+
+model Payment {
+  id            String    @id @default(uuid())
+  tenantId      String
+  paymentDate   DateTime
+  amount        Float
+  paymentMethod String
+  reference     String
+  invoiceId     String    @unique
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  tenant      Company      @relation(fields: [tenantId], references: [id])
+  invoice     SaleInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+}
+
+model PurchaseInvoice {
+  id            String    @id @default(uuid())
+  tenantId      String
+  supplierId    String
+  date          DateTime
+  totalPrice    Float
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  tenant      Company      @relation(fields: [tenantId], references: [id])
+  supplier    Supplier     @relation(fields: [supplierId], references: [id])
+  products    PurchaseProductInvoice[]
+}
+
+model PurchaseProductInvoice {
+  id                String         @id @default(uuid())
+  tenantId          String
+  productId         String
+  purchaseInvoiceId String
+  quantity          Int
+
+  tenant          Company          @relation(fields: [tenantId], references: [id])
+  product         Product          @relation(fields: [productId], references: [id])
+  purchaseInvoice PurchaseInvoice  @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+}
+
+model RevokedToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  createdAt DateTime @default(now())
+}
+
+model SupplierDeposit {
+  id          String   @id @default(uuid())
+  tenantId    String
+  supplierId  String
+  amount      Float
+  createdAt   DateTime @default(now())
+
+  tenant      Company   @relation(fields: [tenantId], references: [id])
+  supplier    Supplier  @relation(fields: [supplierId], references: [id])
+}

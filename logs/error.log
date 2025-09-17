@@ -1,0 +1,1694 @@
+2025-02-27 09:47:37 [error]: Error al crear User: 
+Invalid `prisma.company.findUnique()` invocation in
+C:\Users\santi\Documents\code\Axia_backend\src\controllers\UserController.js:30:46
+
+  27 const avatarUrl = req.file ? req.file.filename : "defaultAvatar.png";
+  28 const avatar = `http://localhost:3001/uploads/users/${avatarUrl}`;
+  29 
+→ 30 const userCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-02-27 09:53:52 [error]: Error al crear User: 
+Invalid `prisma.user.create()` invocation in
+C:\Users\santi\Documents\code\Axia_backend\src\controllers\UserController.js:36:39
+
+  33 
+  34 const hashedPassword = await bcrypt.hash(password, 10);
+  35 
+→ 36 const newUser = await prisma.user.create(
+Null constraint violation on the fields: (`tenantId`)
+2025-02-27 11:21:24 [error]: Error al crear User: 
+Invalid `prisma.user.create()` invocation in
+C:\Users\santi\Documents\code\Axia_backend\src\controllers\UserController.js:36:39
+
+  33 
+  34 const hashedPassword = await bcrypt.hash(password, 10);
+  35 
+→ 36 const newUser = await prisma.user.create(
+Unique constraint failed on the fields: (`email`)
+2025-02-27 11:32:39 [error]: Error al crear User: 
+Invalid `prisma.user.create()` invocation in
+C:\Users\santi\Documents\code\Axia_backend\src\controllers\UserController.js:36:39
+
+  33 
+  34 const hashedPassword = await bcrypt.hash(password, 10);
+  35 
+→ 36 const newUser = await prisma.user.create(
+Unique constraint failed on the fields: (`email`)
+2025-03-06 00:00:35 [error]: Error al conectar a la base de datos: Can't reach database server at `localhost:5433`
+
+Please make sure your database server is running at `localhost:5433`.
+2025-03-06 08:04:43 [error]: Error al conectar a la base de datos: Can't reach database server at `localhost:5433`
+
+Please make sure your database server is running at `localhost:5433`.
+2025-03-06 08:16:25 [error]: Error creando usuario - Cannot read properties of undefined (reading 'role') | Datos: {"name":"Santiago Jimenez","email":"sjimenez@example.com","password":"hola1234","role":"SUPERADMIN"}
+2025-03-06 08:17:49 [error]: Error creando usuario - Cannot read properties of undefined (reading 'role') | Datos: {"name":"Santiago Jimenez","email":"sjimenez@example.com","password":"hola1234","role":"SUPERADMIN"}
+2025-03-06 08:56:50 [error]: Error creando usuario - Assignment to constant variable. | Datos: {"tenantId":"3425aa39-a4d2-4913-b460-6fbd04624c78","name":"Luis Casas","email":"lcasas@example.com","password":"hola1234","role":"ADMIN"}
+2025-03-06 08:59:25 [error]: Error creando usuario - Assignment to constant variable. | Datos: {"bodyTenantId":"3425aa39-a4d2-4913-b460-6fbd04624c78","name":"Luis Casas","email":"lcasas@example.com","password":"hola1234","role":"ADMIN"}
+2025-03-06 09:06:05 [error]: Error creando usuario - Assignment to constant variable. | Datos: {"tenantId":"3425aa39-a4d2-4913-b460-6fbd04624c78","name":"Luis Casas","email":"lcasas@example.com","password":"hola1234","role":"ADMIN"}
+2025-03-06 09:12:07 [error]: Intento de acceso denegado para el usuario undefined con rol SUPERADMIN
+2025-03-06 09:47:00 [error]: Error al crear Cliente: 
+Invalid `prisma.company.findUnique()` invocation in
+C:\Users\santi\Documents\code\Axia_backend\src\controllers\ClientController.js:20:48
+
+  17   email
+  18 } = req.body;
+  19 
+→ 20 const clientCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-03-06 09:48:23 [error]: Error al crear Cliente: 
+Invalid `prisma.company.findUnique()` invocation in
+C:\Users\santi\Documents\code\Axia_backend\src\controllers\ClientController.js:20:48
+
+  17   email
+  18 } = req.body;
+  19 
+→ 20 const clientCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-03-06 10:56:12 [error]: Error al obtener Products: 
+Invalid `prisma.product.findMany()` invocation in
+C:\Users\santi\Documents\code\Axia_backend\src\controllers\ProductController.js:57:43
+
+  54 ? {} 
+  55 : { tenantId: tenantId };
+  56 
+→ 57 const products = await prisma.product.findMany({
+       where: {
+         tenantId: "33177c3f-7c0a-4fa8-9d89-6ec9098698ae"
+       },
+       include: {
+         tenant: true,
+         supplier: true,
+         productInvoices: true,
+         ~~~~~~~~~~~~~~~
+     ?   saleProductInvoices?: true,
+     ?   purchaseProductInvoices?: true
+       }
+     })
+
+Unknown field `productInvoices` for include statement on model `Product`. Available options are marked with ?.
+2025-03-10 19:31:53 [error]: Error al obtener Product: 
+Invalid `prisma.product.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\ProductController.js:136:42
+
+  133 ? { id }
+  134 : { id, tenantId: tenantId };
+  135 
+→ 136 const product = await prisma.product.findUnique({
+        where: {
+          id: "274a0037-bca2-4a14-adb0-79bcbadb0b58",
+          tenantId: "3425aa39-a4d2-4913-b460-6fbd04624c78"
+        },
+        include: {
+          tenant: true,
+          supplier: true,
+          productInvoices: true,
+          ~~~~~~~~~~~~~~~
+      ?   saleProductInvoices?: true,
+      ?   purchaseProductInvoices?: true
+        }
+      })
+
+Unknown field `productInvoices` for include statement on model `Product`. Available options are marked with ?.
+2025-03-10 19:32:01 [error]: Error al obtener Product: 
+Invalid `prisma.product.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\ProductController.js:136:42
+
+  133 ? { id }
+  134 : { id, tenantId: tenantId };
+  135 
+→ 136 const product = await prisma.product.findUnique({
+        where: {
+          id: "274a0037-bca2-4a14-adb0-79bcbadb0b58",
+          tenantId: "3425aa39-a4d2-4913-b460-6fbd04624c78"
+        },
+        include: {
+          tenant: true,
+          supplier: true,
+          productInvoices: true,
+          ~~~~~~~~~~~~~~~
+      ?   saleProductInvoices?: true,
+      ?   purchaseProductInvoices?: true
+        }
+      })
+
+Unknown field `productInvoices` for include statement on model `Product`. Available options are marked with ?.
+2025-03-10 19:32:50 [error]: Error al obtener Product: 
+Invalid `prisma.product.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\ProductController.js:136:42
+
+  133 ? { id }
+  134 : { id, tenantId: tenantId };
+  135 
+→ 136 const product = await prisma.product.findUnique({
+        where: {
+          id: "274a0037-bca2-4a14-adb0-79bcbadb0b58",
+          tenantId: "3425aa39-a4d2-4913-b460-6fbd04624c78"
+        },
+        include: {
+          tenant: true,
+          supplier: true,
+          productInvoices: true,
+          ~~~~~~~~~~~~~~~
+      ?   saleProductInvoices?: true,
+      ?   purchaseProductInvoices?: true
+        }
+      })
+
+Unknown field `productInvoices` for include statement on model `Product`. Available options are marked with ?.
+2025-03-10 19:33:19 [error]: Error al obtener Product: 
+Invalid `prisma.product.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\ProductController.js:136:42
+
+  133 ? { id }
+  134 : { id, tenantId: tenantId };
+  135 
+→ 136 const product = await prisma.product.findUnique({
+        where: {
+          id: "274a0037-bca2-4a14-adb0-79bcbadb0b58",
+          tenantId: "3425aa39-a4d2-4913-b460-6fbd04624c78"
+        },
+        include: {
+          tenant: true,
+          supplier: true,
+          productInvoices: true,
+          ~~~~~~~~~~~~~~~
+      ?   saleProductInvoices?: true,
+      ?   purchaseProductInvoices?: true
+        }
+      })
+
+Unknown field `productInvoices` for include statement on model `Product`. Available options are marked with ?.
+2025-03-10 19:33:36 [error]: Error al obtener Product: 
+Invalid `prisma.product.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\ProductController.js:136:42
+
+  133 ? { id }
+  134 : { id, tenantId: tenantId };
+  135 
+→ 136 const product = await prisma.product.findUnique({
+        where: {
+          id: "274a0037-bca2-4a14-adb0-79bcbadb0b58",
+          tenantId: "3425aa39-a4d2-4913-b460-6fbd04624c78"
+        },
+        include: {
+          tenant: true,
+          supplier: true,
+          productInvoices: true,
+          ~~~~~~~~~~~~~~~
+      ?   saleProductInvoices?: true,
+      ?   purchaseProductInvoices?: true
+        }
+      })
+
+Unknown field `productInvoices` for include statement on model `Product`. Available options are marked with ?.
+2025-03-31 11:07:27 [error]: Error al crear Cliente: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ClientController.js:20:48
+
+  17   email
+  18 } = req.body;
+  19 
+→ 20 const clientCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-03-31 11:10:16 [error]: Error al crear Cliente: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ClientController.js:22:48
+
+  19 
+  20 console.log('tenantId', tenantId)
+  21 
+→ 22 const clientCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-03-31 11:10:55 [error]: Error al crear Cliente: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ClientController.js:22:48
+
+  19 
+  20 console.log(req.body);
+  21 
+→ 22 const clientCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-03-31 11:26:32 [error]: Error al crear Cliente: 
+Invalid `prisma.client.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ClientController.js:30:43
+
+  27   return res.status(404).json({ error: 'Empresa no encontrada' });
+  28 }
+  29 
+→ 30 const newClient = await prisma.client.create(
+Unique constraint failed on the fields: (`email`)
+2025-04-01 00:16:00 [error]: Error creando usuario - 
+Invalid `prisma.user.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/UserController.js:99:39
+
+  96 
+  97 const hashedPassword = await bcrypt.hash(password, 10);
+  98 
+→ 99 const newUser = await prisma.user.create(
+Unique constraint failed on the fields: (`email`) | Datos: {"name":"Andres","role":"USER","email":"andres@gmail.com","password":"hola1234","tenantId":"6989084f-d511-471c-bbd7-f3d5d69d27f3","id":""}
+2025-04-01 22:25:48 [error]: Error al crear Cliente: 
+Invalid `prisma.client.create()` invocation in
+C:\Users\az230\Downloads\Frontend\Axia_Invoice-backend\src\controllers\ClientController.js:30:43
+
+  27   return res.status(404).json({ error: 'Empresa no encontrada' });
+  28 }
+  29 
+→ 30 const newClient = await prisma.client.create(
+Unique constraint failed on the fields: (`email`)
+2025-04-01 22:38:44 [error]: Error creando usuario - Cannot read properties of undefined (reading 'role') | Datos: {"tenantId":"41a760a0-e647-41e2-8c90-c56662e9f338","name":"Employee 1","email":"employee1@example.com","password":"hashed-password","role":"USER"}
+2025-04-01 22:40:18 [error]: Error creando usuario - Cannot read properties of undefined (reading 'role') | Datos: {"tenantId":"41a760a0-e647-41e2-8c90-c56662e9f338","name":"Employee 1","email":"employee1@example.com","password":"hashed-password","role":"USER"}
+2025-04-01 22:41:15 [error]: Error creando usuario - Cannot read properties of undefined (reading 'role') | Datos: {"tenantId":"41a760a0-e647-41e2-8c90-c56662e9f338","name":"Employee 1","email":"employee1@example.com","password":"hashed-password","role":"USER"}
+2025-04-01 22:42:22 [error]: Error creando usuario - Cannot read properties of undefined (reading 'role') | Datos: {"tenantId":"41a760a0-e647-41e2-8c90-c56662e9f338","name":"Employee 1","email":"employee1@example.com","password":"hashed-password"}
+2025-04-01 22:44:03 [error]: Error creando usuario - Cannot read properties of undefined (reading 'role') | Datos: {"tenantId":"41a760a0-e647-41e2-8c90-c56662e9f338","name":"Employee 1","email":"employee1@example.com","password":"hashed-password","role":"USER"}
+2025-04-02 08:02:09 [error]: Error al obtener clientes públicos: where is not defined
+2025-04-02 08:02:15 [error]: Error al obtener clientes públicos: where is not defined
+2025-04-02 08:03:46 [error]: Error al obtener usuarios públicos: where is not defined
+2025-04-03 05:09:14 [error]: Error al obtener usuarios públicos: 
+Invalid `prisma.user.findMany()` invocation in
+C:\Users\az230\Downloads\Frontend\Axia_Invoice-backend\src\controllers\UserController.js:330:37
+
+  327  */
+  328 const getPublicUsers = async (req, res) => {
+  329   try {
+→ 330     const users = await prisma.user.findMany({
+            select: {
+            ~~~~~~
+              id: true,
+              tenantId: true,
+              name: true,
+              email: true,
+              role: true,
+              avatar: true
+            },
+            include: {
+            ~~~~~~~
+              tenant: false
+            },
+            take: 20
+          })
+
+Please either use `include` or `select`, but not both at the same time.
+2025-04-03 05:09:19 [error]: Error al obtener usuarios públicos: 
+Invalid `prisma.user.findMany()` invocation in
+C:\Users\az230\Downloads\Frontend\Axia_Invoice-backend\src\controllers\UserController.js:330:37
+
+  327  */
+  328 const getPublicUsers = async (req, res) => {
+  329   try {
+→ 330     const users = await prisma.user.findMany({
+            select: {
+            ~~~~~~
+              id: true,
+              tenantId: true,
+              name: true,
+              email: true,
+              role: true,
+              avatar: true
+            },
+            include: {
+            ~~~~~~~
+              tenant: false
+            },
+            take: 20
+          })
+
+Please either use `include` or `select`, but not both at the same time.
+2025-04-03 05:09:31 [error]: Error al obtener usuarios públicos: 
+Invalid `prisma.user.findMany()` invocation in
+C:\Users\az230\Downloads\Frontend\Axia_Invoice-backend\src\controllers\UserController.js:330:37
+
+  327  */
+  328 const getPublicUsers = async (req, res) => {
+  329   try {
+→ 330     const users = await prisma.user.findMany({
+            select: {
+            ~~~~~~
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              avatar: true
+            },
+            include: {
+            ~~~~~~~
+              tenant: false
+            },
+            take: 20
+          })
+
+Please either use `include` or `select`, but not both at the same time.
+2025-04-01 22:23:01 [error]: Error en login: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\UserController.js:134:36
+
+  131 try {
+  132   const { email, password } = req.body;
+  133 
+→ 134   const user = await prisma.user.findUnique(
+The column `User.isAdmin` does not exist in the current database.
+2025-04-01 22:23:03 [error]: Error en login: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\UserController.js:134:36
+
+  131 try {
+  132   const { email, password } = req.body;
+  133 
+→ 134   const user = await prisma.user.findUnique(
+The column `User.isAdmin` does not exist in the current database.
+2025-04-01 22:23:04 [error]: Error en login: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\UserController.js:134:36
+
+  131 try {
+  132   const { email, password } = req.body;
+  133 
+→ 134   const user = await prisma.user.findUnique(
+The column `User.isAdmin` does not exist in the current database.
+2025-04-01 22:26:08 [error]: Error en login: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\UserController.js:134:36
+
+  131 try {
+  132   const { email, password } = req.body;
+  133 
+→ 134   const user = await prisma.user.findUnique(
+The column `User.isAdmin` does not exist in the current database.
+2025-04-01 22:42:40 [error]: Error en login: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\UserController.js:134:36
+
+  131 try {
+  132   const { email, password } = req.body;
+  133 
+→ 134   const user = await prisma.user.findUnique(
+The column `User.isAdmin` does not exist in the current database.
+2025-04-01 22:49:17 [error]: Error en login: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\UserController.js:134:36
+
+  131 try {
+  132   const { email, password } = req.body;
+  133 
+→ 134   const user = await prisma.user.findUnique({
+          where: {
+            email: "lcasas@example.com"
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            password: true,
+            role: true,
+            ~~~~
+            tenantId: true,
+        ?   isAdmin?: true,
+        ?   createdAt?: true,
+        ?   updatedAt?: true,
+        ?   tenant?: true
+          }
+        })
+
+Unknown field `role` for select statement on model `User`. Available options are marked with ?.
+2025-04-01 23:01:00 [error]: Error en login: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\UserController.js:134:36
+
+  131 try {
+  132   const { email, password } = req.body;
+  133 
+→ 134   const user = await prisma.user.findUnique({
+          where: {
+            email: "pepefer@example.com"
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            password: true,
+            role: true,
+            ~~~~
+            tenantId: true,
+        ?   isAdmin?: true,
+        ?   createdAt?: true,
+        ?   updatedAt?: true,
+        ?   tenant?: true
+          }
+        })
+
+Unknown field `role` for select statement on model `User`. Available options are marked with ?.
+2025-04-01 23:02:17 [error]: Error en login: 
+Invalid `prisma.user.findUnique()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\UserController.js:134:36
+
+  131 try {
+  132   const { email, password } = req.body;
+  133 
+→ 134   const user = await prisma.user.findUnique({
+          where: {
+            email: "lcasas@example.com"
+          },
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            password: true,
+            role: true,
+            ~~~~
+            tenantId: true,
+        ?   isAdmin?: true,
+        ?   createdAt?: true,
+        ?   updatedAt?: true,
+        ?   tenant?: true
+          }
+        })
+
+Unknown field `role` for select statement on model `User`. Available options are marked with ?.
+2025-04-02 01:27:09 [error]: Error al conectar a la base de datos: Can't reach database server at `localhost:5433`
+
+Please make sure your database server is running at `localhost:5433`.
+2025-04-03 23:26:02 [error]: Error al conectar a la base de datos: Can't reach database server at `localhost:5433`
+
+Please make sure your database server is running at `localhost:5433`.
+2025-04-06 21:25:07 [error]: Error al conectar a la base de datos: Can't reach database server at `localhost:5433`
+
+Please make sure your database server is running at `localhost:5433`.
+2025-04-06 22:01:38 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+C:\Users\santi\Documents\Universidad\6to_semestre\Front_End\Axia\Axia_backend\src\controllers\ProductController.js:28:45
+
+  25   return res.status(404).json({ error: 'Empresa no encontrada' });
+  26 }
+  27 
+→ 28 const newProduct = await prisma.product.create({
+       data: {
+         name: "Product Four",
+         salePrice: 52,
+         purchasePrice: 38,
+         tax: 5,
+         stock: 18,
+         tenant: {
+           connect: {
+             id: "3425aa39-a4d2-4913-b460-6fbd04624c78"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 16:56:39 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:23:49
+
+  20   products = []
+  21 } = req.body;
+  22 
+→ 23 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 16:57:52 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:23:49
+
+  20   products = []
+  21 } = req.body;
+  22 
+→ 23 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 16:58:07 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:23:49
+
+  20   products = []
+  21 } = req.body;
+  22 
+→ 23 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 17:00:07 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:25:49
+
+  22 
+  23 console.log(req.body);
+  24 
+→ 25 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 17:00:40 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:25:49
+
+  22 
+  23 console.log(req.body);
+  24 
+→ 25 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 17:01:00 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:25:49
+
+  22 
+  23 console.log(req.body);
+  24 
+→ 25 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 17:08:13 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:25:49
+
+  22 
+  23 console.log(req.body);
+  24 
+→ 25 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 17:09:54 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:25:49
+
+  22 
+  23 console.log(req.body);
+  24 
+→ 25 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 17:10:34 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:25:49
+
+  22 
+  23 console.log(req.body);
+  24 
+→ 25 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 17:14:27 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:25:49
+
+  22 
+  23 console.log(req.body);
+  24 
+→ 25 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-05-24 17:16:13 [error]: Error al crear SaleInvoice: 
+Invalid `prisma.company.findUnique()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:25:49
+
+  22 
+  23 console.log(req.body);
+  24 
+→ 25 const invoiceCompany = await prisma.company.findUnique({
+       where: {
+         id: undefined,
+     ?   AND?: CompanyWhereInput | CompanyWhereInput[],
+     ?   OR?: CompanyWhereInput[],
+     ?   NOT?: CompanyWhereInput | CompanyWhereInput[],
+     ?   nit?: StringFilter | String,
+     ?   name?: StringFilter | String,
+     ?   address?: StringFilter | String,
+     ?   phone?: StringFilter | String,
+     ?   sector?: EnumSectorFilter | Sector,
+     ?   createdAt?: DateTimeFilter | DateTime,
+     ?   updatedAt?: DateTimeFilter | DateTime,
+     ?   clients?: ClientListRelationFilter,
+     ?   invoices?: SaleInvoiceListRelationFilter,
+     ?   products?: ProductListRelationFilter,
+     ?   users?: UserListRelationFilter,
+     ?   suppliers?: SupplierListRelationFilter,
+     ?   payments?: PaymentListRelationFilter,
+     ?   purchases?: PurchaseInvoiceListRelationFilter,
+     ?   saleProductInvoices?: SaleProductInvoiceListRelationFilter,
+     ?   purchaseProductInvoices?: PurchaseProductInvoiceListRelationFilter
+       }
+     })
+
+Argument `where` of type CompanyWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-01 18:01:05 [error]: Error al eliminar SaleInvoice: 
+Invalid `prisma.saleInvoice.delete()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/SaleInvoiceController.js:464:36
+
+  461   console.error(e)
+  462 }
+  463 
+→ 464 await prisma.saleInvoice.delete(
+Foreign key constraint violated: `Payment_invoiceId_fkey (index)`
+2025-06-01 21:06:35 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:29:45
+
+  26   return res.status(404).json({ error: 'Empresa no encontrada' });
+  27 }
+  28 
+→ 29 const newProduct = await prisma.product.create({
+       data: {
+         name: "Cafe",
+         salePrice: 1,
+         purchasePrice: 1,
+         tax: 0,
+         stock: 100000,
+         tenant: {
+           connect: {
+             id: "6989084f-d511-471c-bbd7-f3d5d69d27f3"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-01 21:07:17 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:29:45
+
+  26   return res.status(404).json({ error: 'Empresa no encontrada' });
+  27 }
+  28 
+→ 29 const newProduct = await prisma.product.create({
+       data: {
+         name: "Cafe",
+         salePrice: 1,
+         purchasePrice: 1,
+         tax: 0,
+         stock: 1,
+         tenant: {
+           connect: {
+             id: "6989084f-d511-471c-bbd7-f3d5d69d27f3"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-01 21:07:26 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:29:45
+
+  26   return res.status(404).json({ error: 'Empresa no encontrada' });
+  27 }
+  28 
+→ 29 const newProduct = await prisma.product.create({
+       data: {
+         name: "Cafe",
+         salePrice: 1,
+         purchasePrice: 1,
+         tax: 0,
+         stock: 1,
+         tenant: {
+           connect: {
+             id: "6989084f-d511-471c-bbd7-f3d5d69d27f3"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-01 21:09:04 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:29:45
+
+  26   return res.status(404).json({ error: 'Empresa no encontrada' });
+  27 }
+  28 
+→ 29 const newProduct = await prisma.product.create({
+       data: {
+         name: "Cafe Mojado",
+         salePrice: 1,
+         purchasePrice: 1,
+         tax: 0,
+         stock: 1,
+         tenant: {
+           connect: {
+             id: "6989084f-d511-471c-bbd7-f3d5d69d27f3"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-01 21:14:38 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:29:45
+
+  26   return res.status(404).json({ error: 'Empresa no encontrada' });
+  27 }
+  28 
+→ 29 const newProduct = await prisma.product.create({
+       data: {
+         name: "da",
+         salePrice: 21,
+         purchasePrice: 21,
+         tax: 21,
+         stock: 12,
+         tenant: {
+           connect: {
+             id: "6989084f-d511-471c-bbd7-f3d5d69d27f3"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-01 21:15:09 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:29:45
+
+  26   return res.status(404).json({ error: 'Empresa no encontrada' });
+  27 }
+  28 
+→ 29 const newProduct = await prisma.product.create({
+       data: {
+         name: "da",
+         salePrice: 21,
+         purchasePrice: 21,
+         tax: 21,
+         stock: 12,
+         tenant: {
+           connect: {
+             id: "6989084f-d511-471c-bbd7-f3d5d69d27f3"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-01 21:15:46 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:29:45
+
+  26   return res.status(404).json({ error: 'Empresa no encontrada' });
+  27 }
+  28 
+→ 29 const newProduct = await prisma.product.create({
+       data: {
+         name: "da",
+         salePrice: 21,
+         purchasePrice: 21,
+         tax: 21,
+         stock: 12,
+         tenant: {
+           connect: {
+             id: "6989084f-d511-471c-bbd7-f3d5d69d27f3"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-02 01:11:37 [error]: Error al obtener métricas de dashboard: 
+Invalid `prisma.saleInvoice.count()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/AnalyticsController.js:240:49
+
+  237 const tenantId = req.user.tenantId;
+  238 
+  239 // Get sales metrics
+→ 240 const salesCount = await prisma.saleInvoice.count({
+        select: {
+          _count: {
+            select: {
+              _all: true
+            }
+          }
+        },
+        where: {
+      +   tenantId: {
+      +     equals: String | StringFieldRefInput,
+      +     in: String[] | ListStringFieldRefInput,
+      +     notIn: String[] | ListStringFieldRefInput,
+      +     lt: String | StringFieldRefInput,
+      +     lte: String | StringFieldRefInput,
+      +     gt: String | StringFieldRefInput,
+      +     gte: String | StringFieldRefInput,
+      +     contains: String | StringFieldRefInput,
+      +     startsWith: String | StringFieldRefInput,
+      +     endsWith: String | StringFieldRefInput,
+      +     mode: QueryMode,
+      +     not: String | NestedStringFilter
+      +   }
+        }
+      })
+
+Argument `tenantId` must not be null.
+2025-06-02 01:11:38 [error]: Error al obtener métricas de dashboard: 
+Invalid `prisma.saleInvoice.count()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/AnalyticsController.js:240:49
+
+  237 const tenantId = req.user.tenantId;
+  238 
+  239 // Get sales metrics
+→ 240 const salesCount = await prisma.saleInvoice.count({
+        select: {
+          _count: {
+            select: {
+              _all: true
+            }
+          }
+        },
+        where: {
+      +   tenantId: {
+      +     equals: String | StringFieldRefInput,
+      +     in: String[] | ListStringFieldRefInput,
+      +     notIn: String[] | ListStringFieldRefInput,
+      +     lt: String | StringFieldRefInput,
+      +     lte: String | StringFieldRefInput,
+      +     gt: String | StringFieldRefInput,
+      +     gte: String | StringFieldRefInput,
+      +     contains: String | StringFieldRefInput,
+      +     startsWith: String | StringFieldRefInput,
+      +     endsWith: String | StringFieldRefInput,
+      +     mode: QueryMode,
+      +     not: String | NestedStringFilter
+      +   }
+        }
+      })
+
+Argument `tenantId` must not be null.
+2025-06-02 01:25:26 [error]: Error al obtener métricas de dashboard: 
+Invalid `prisma.saleInvoice.count()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/AnalyticsController.js:240:49
+
+  237 const tenantId = req.user.tenantId;
+  238 
+  239 // Get sales metrics
+→ 240 const salesCount = await prisma.saleInvoice.count({
+        select: {
+          _count: {
+            select: {
+              _all: true
+            }
+          }
+        },
+        where: {
+      +   tenantId: {
+      +     equals: String | StringFieldRefInput,
+      +     in: String[] | ListStringFieldRefInput,
+      +     notIn: String[] | ListStringFieldRefInput,
+      +     lt: String | StringFieldRefInput,
+      +     lte: String | StringFieldRefInput,
+      +     gt: String | StringFieldRefInput,
+      +     gte: String | StringFieldRefInput,
+      +     contains: String | StringFieldRefInput,
+      +     startsWith: String | StringFieldRefInput,
+      +     endsWith: String | StringFieldRefInput,
+      +     mode: QueryMode,
+      +     not: String | NestedStringFilter
+      +   }
+        }
+      })
+
+Argument `tenantId` must not be null.
+2025-06-02 01:25:26 [error]: Error al obtener métricas de dashboard: 
+Invalid `prisma.saleInvoice.count()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/AnalyticsController.js:240:49
+
+  237 const tenantId = req.user.tenantId;
+  238 
+  239 // Get sales metrics
+→ 240 const salesCount = await prisma.saleInvoice.count({
+        select: {
+          _count: {
+            select: {
+              _all: true
+            }
+          }
+        },
+        where: {
+      +   tenantId: {
+      +     equals: String | StringFieldRefInput,
+      +     in: String[] | ListStringFieldRefInput,
+      +     notIn: String[] | ListStringFieldRefInput,
+      +     lt: String | StringFieldRefInput,
+      +     lte: String | StringFieldRefInput,
+      +     gt: String | StringFieldRefInput,
+      +     gte: String | StringFieldRefInput,
+      +     contains: String | StringFieldRefInput,
+      +     startsWith: String | StringFieldRefInput,
+      +     endsWith: String | StringFieldRefInput,
+      +     mode: QueryMode,
+      +     not: String | NestedStringFilter
+      +   }
+        }
+      })
+
+Argument `tenantId` must not be null.
+2025-06-02 01:34:13 [error]: Error creando usuario - 
+Invalid `prisma.user.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/UserController.js:98:39
+
+  95 
+  96 const hashedPassword = await bcrypt.hash(password, 10);
+  97 
+→ 98 const newUser = await prisma.user.create({
+       data: {
+         name: "Juan",
+         password: "$2b$10$Xt5t97qjzTalAFESnPS.feLdiLrxpKwJVPZT.EG7az/XQ44PZ/GSC",
+         role: "ADMIN",
+         avatar: "http://localhost:3001/uploads/users/defaultAvatar.png",
+         tenant: {
+           connect: {
+             id: "b00072a6-44a8-4ec5-a5d4-c5a5f25bad05"
+           }
+         },
+     +   email: String
+       }
+     })
+
+Argument `email` is missing. | Datos: {"tenantId":"b00072a6-44a8-4ec5-a5d4-c5a5f25bad05","role":"ADMIN","name":"Juan","gmail":"juanj@gmail.com","password":"hola1234"}
+2025-06-02 01:37:13 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:30:45
+
+  27   return res.status(404).json({ error: 'Empresa no encontrada' });
+  28 }
+  29 
+→ 30 const newProduct = await prisma.product.create({
+       data: {
+         name: "CAFE",
+         salePrice: 1,
+         purchasePrice: 1,
+         tax: 0,
+         description: undefined,
+         stock: 1,
+         tenant: {
+           connect: {
+             id: "b00072a6-44a8-4ec5-a5d4-c5a5f25bad05"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter,
+     ?       supplierDeposits?: SupplierDepositListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-02 01:37:36 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:30:45
+
+  27   return res.status(404).json({ error: 'Empresa no encontrada' });
+  28 }
+  29 
+→ 30 const newProduct = await prisma.product.create({
+       data: {
+         name: "CAFE",
+         salePrice: 1,
+         purchasePrice: 1,
+         tax: 0,
+         description: undefined,
+         stock: 1,
+         tenant: {
+           connect: {
+             id: "b00072a6-44a8-4ec5-a5d4-c5a5f25bad05"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter,
+     ?       supplierDeposits?: SupplierDepositListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-02 01:37:49 [error]: Error al crear Product: 
+Invalid `prisma.product.create()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/ProductController.js:30:45
+
+  27   return res.status(404).json({ error: 'Empresa no encontrada' });
+  28 }
+  29 
+→ 30 const newProduct = await prisma.product.create({
+       data: {
+         name: "CAFE",
+         salePrice: 1,
+         purchasePrice: 1,
+         tax: 0,
+         description: undefined,
+         stock: 1,
+         tenant: {
+           connect: {
+             id: "b00072a6-44a8-4ec5-a5d4-c5a5f25bad05"
+           }
+         },
+         supplier: {
+           connect: {
+             id: undefined,
+     ?       AND?: SupplierWhereInput | SupplierWhereInput[],
+     ?       OR?: SupplierWhereInput[],
+     ?       NOT?: SupplierWhereInput | SupplierWhereInput[],
+     ?       tenantId?: StringFilter | String,
+     ?       nit?: StringFilter | String,
+     ?       name?: StringFilter | String,
+     ?       phone?: StringFilter | String,
+     ?       address?: StringFilter | String,
+     ?       createdAt?: DateTimeFilter | DateTime,
+     ?       updatedAt?: DateTimeFilter | DateTime,
+     ?       tenant?: CompanyScalarRelationFilter | CompanyWhereInput,
+     ?       products?: ProductListRelationFilter,
+     ?       purchases?: PurchaseInvoiceListRelationFilter,
+     ?       supplierDeposits?: SupplierDepositListRelationFilter
+           }
+         }
+       }
+     })
+
+Argument `connect` of type SupplierWhereUniqueInput needs at least one of `id` arguments. Available options are marked with ?.
+2025-06-02 22:18:27 [error]: Error al obtener métricas de dashboard: 
+Invalid `prisma.saleInvoice.count()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/AnalyticsController.js:240:49
+
+  237 const tenantId = req.user.tenantId;
+  238 
+  239 // Get sales metrics
+→ 240 const salesCount = await prisma.saleInvoice.count({
+        select: {
+          _count: {
+            select: {
+              _all: true
+            }
+          }
+        },
+        where: {
+      +   tenantId: {
+      +     equals: String | StringFieldRefInput,
+      +     in: String[] | ListStringFieldRefInput,
+      +     notIn: String[] | ListStringFieldRefInput,
+      +     lt: String | StringFieldRefInput,
+      +     lte: String | StringFieldRefInput,
+      +     gt: String | StringFieldRefInput,
+      +     gte: String | StringFieldRefInput,
+      +     contains: String | StringFieldRefInput,
+      +     startsWith: String | StringFieldRefInput,
+      +     endsWith: String | StringFieldRefInput,
+      +     mode: QueryMode,
+      +     not: String | NestedStringFilter
+      +   }
+        }
+      })
+
+Argument `tenantId` must not be null.
+2025-06-02 22:18:27 [error]: Error al obtener métricas de dashboard: 
+Invalid `prisma.saleInvoice.count()` invocation in
+/Users/juancamposbetancourth/Documents/Fronted/Axia_Invoice-backend/src/controllers/AnalyticsController.js:240:49
+
+  237 const tenantId = req.user.tenantId;
+  238 
+  239 // Get sales metrics
+→ 240 const salesCount = await prisma.saleInvoice.count({
+        select: {
+          _count: {
+            select: {
+              _all: true
+            }
+          }
+        },
+        where: {
+      +   tenantId: {
+      +     equals: String | StringFieldRefInput,
+      +     in: String[] | ListStringFieldRefInput,
+      +     notIn: String[] | ListStringFieldRefInput,
+      +     lt: String | StringFieldRefInput,
+      +     lte: String | StringFieldRefInput,
+      +     gt: String | StringFieldRefInput,
+      +     gte: String | StringFieldRefInput,
+      +     contains: String | StringFieldRefInput,
+      +     startsWith: String | StringFieldRefInput,
+      +     endsWith: String | StringFieldRefInput,
+      +     mode: QueryMode,
+      +     not: String | NestedStringFilter
+      +   }
+        }
+      })
+
+Argument `tenantId` must not be null.
+2025-09-17 01:28:21 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:28:25 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:28:28 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:28:31 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:28:34 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:29:25 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:29:25 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:29:36 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:29:38 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:30:30 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:30:52 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:30:53 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:33:46 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:35:47 [error]: Factura de venta no encontrada con ID: searchByDateRange
+2025-09-17 01:36:28 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:36:35 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:36:35 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:36:41 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:37:21 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:37:21 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:37:43 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:37:45 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:38:34 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:39:01 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:39:01 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
+2025-09-17 01:39:03 [error]: Error al buscar SaleInvoices por rango de fechas: Cannot read properties of undefined (reading 'tenantId')
