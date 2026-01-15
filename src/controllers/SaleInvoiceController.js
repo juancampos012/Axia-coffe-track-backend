@@ -40,6 +40,7 @@ const createSaleInvoice = async (req, res) => {
           create: products.map(p => ({
             product: { connect: { id: p.productId } },
             quantity: p.quantity,
+            unitPrice: p.unitPrice,
             tenant: { connect: { id: tenantId } }
           }))
         }
@@ -47,7 +48,7 @@ const createSaleInvoice = async (req, res) => {
       include: {
         invoiceProducts: true,
       }
-    });
+    }); 
 
     await prisma.company.update({
       where: { id: tenantId },
@@ -503,7 +504,11 @@ const searchInvoicesByDateRange = async (req, res) => {
       include: {
         tenant: true,
         client: true,
-        invoiceProducts: true,
+        invoiceProducts: {
+          include: {
+            product: true, 
+          },
+        },
         payment: true,
       },
       orderBy: {

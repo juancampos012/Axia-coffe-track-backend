@@ -12,6 +12,7 @@ const createClient = async (req, res) => {
       identification,
       firstName,
       lastName,
+      phone,
       email
     } = req.body;
 
@@ -30,6 +31,7 @@ const createClient = async (req, res) => {
         identification,
         firstName,
         lastName,
+        phone,
         email,
         tenant: { connect: { id: tenantId}},
       }
@@ -109,6 +111,7 @@ const updateClient = async (req, res) => {
       identification,
       firstName,
       lastName,
+      phone,
       email
     } = req.body;
 
@@ -135,6 +138,7 @@ const updateClient = async (req, res) => {
         identification,
         firstName,
         lastName,
+        phone,
         email,
       },
     });
@@ -194,6 +198,7 @@ const getPublicClients = async (req, res) => {
         identification: true,
         firstName: true,
         lastName: true,
+        phone: true,
         email: true,
         tenant: { select: { name: true, id: true } },
       },
@@ -222,6 +227,7 @@ const getPublicClientById = async (req, res) => {
         identification: true,
         firstName: true,
         lastName: true,
+        phone: true,
         email: true,
         tenant: { select: { name: true, id: true } },
       },
@@ -301,6 +307,7 @@ const searchClientsByName = async (req, res) => {
         identification: true,
         firstName: true,
         lastName: true,
+        phone: true,
         email: true
       },
       orderBy: {

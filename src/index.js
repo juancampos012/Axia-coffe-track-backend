@@ -25,6 +25,7 @@ const supplierRoutes = require('./routes/supplierRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const aiRoutes = require ('./routes/aiRoutes');
 const supplierDepositRoutes = require('./routes/SupplierDepositRoutes');
+const loanRoutes = require('./routes/loanRoutes');
 
 // Middlewares básicos
 app.use(helmet());
@@ -48,7 +49,6 @@ logger.info('Iniciando aplicación...');
 // Rutas estáticas (para servir archivos subidos con Multer)
 app.use('/uploads', express.static('src/uploads'));
 
-// Ejemplo de rutas
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/companies', companyRoutes);
 app.use('/api/v1/clients', clientRoutes);
@@ -62,6 +62,7 @@ app.use('/api/v1/suppliers', supplierRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/supplier-deposits', supplierDepositRoutes);
+app.use('/api/v1/loans', loanRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend is running' });

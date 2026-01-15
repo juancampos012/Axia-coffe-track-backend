@@ -52,16 +52,16 @@ const createSaleProductInvoice = async (req, res) => {
     });
 
     // Actualizar el stock del producto (restar la cantidad vendida)
-    const updatedProduct = await prisma.product.update({
+    /* const updatedProduct = await prisma.product.update({
       where: { id: productId },
       data: {
         stock: {
           decrement: quantity,
         },
       },
-    });
+    }); */
 
-    logger.info(`Producto de factura de venta creado exitosamente: ${newSaleProductInvoice.id}, Stock actualizado a: ${updatedProduct.stock}`);
+    logger.info(`Producto de factura de venta creado exitosamente: ${newSaleProductInvoice.id}`);
     return res.status(201).json(newSaleProductInvoice);
   } catch (error) {
     logger.error('Error al crear ProductInvoice:', error);

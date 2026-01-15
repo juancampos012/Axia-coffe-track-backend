@@ -11,4 +11,6 @@ router.get("/:id", authenticateJWT, paymentController.getPaymentById);
 router.patch("/:id", authenticateJWT, paymentController.updatePayment);
 router.delete("/:id", authenticateJWT, requireRole('ADMIN', 'EDITOR', 'SUPERADMIN'), paymentController.deletePayment);
 
+router.post("/reset-balance", authenticateJWT, requireRole('ADMIN', 'SUPERADMIN'), paymentController.resetCompanyBalance);
+
 module.exports = router;

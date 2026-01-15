@@ -172,4 +172,109 @@ const deletePayment = async (req, res) => {
   }
 };
 
-module.exports = { createPayment, getPayments, getPaymentById, updatePayment, deletePayment }
+/**
+ * Resetear balance de la empresa a 0 (solo para administradores)
+ */
+const resetCompanyBalance = async (req, res) => {
+  try {
+    const { userId, tenantId, role } = req.user;
+    
+    // Verificar permisos (solo ADMIN o SUPERADMIN pueden resetear el balance)
+    if (!['ADMIN', 'SUPERADMIN'].includes(role)) {
+      logger.warn(`Intento no autorizado de resetear balance. Usuario: ${userId}, Rol: ${role}`);
+      return res.status(403).json({ 
+        error: 'No tienes permisos para esta acción. Solo administradores pueden resetear el balance.' 
+      });
+    }
+    
+    // Obtener la empresa y su balance actual
+    const company = await prisma.company.findUnique({
+      where: { id: tenantId },
+      select: { 
+        id: true, 
+        name: true, 
+        currentBalance: true 
+      }
+    });
+    
+    if (!company) {
+      logger.error(`Empresa no encontrada: ${tenantId}`);
+      return res.status(404).json({ error: 'Empresa no encontrada' });
+    }
+    
+    // Si ya está en 0, no hacer nada
+    if (company.currentBalance === 0) {
+      return res.status(200).json({ 
+        message: 'El balance ya está en 0',
+        previousBalance: 0,
+        newBalance: 0
+      });
+    }
+    
+    // Crear registro del balance anterior antes de actualizar
+    const previousBalance = company.currentBalance;
+    
+    // Actualizar balance de la empresa a 0
+    const updatedCompany = await prisma.company.update({
+      where: { id: tenantId },
+      data: { currentBalance: 0 }
+    });
+    
+    // Crear un registro de auditoría para esta acción
+    await prisma.auditLog.create({
+      data: {
+        action: 'RESET_BALANCE',
+        userId: userId,
+        tenantId: tenantId,
+        details: `Balance reset to 0. Previous balance: ${previousBalance}`,
+        ipAddress: req.ip || req.headers['x-forwarded-for'] || 'unknown'
+      }
+    });
+    
+    // Opcional: Crear un registro de transacción para tracking
+    // Asegúrate de que el userId no sea undefined
+    if (userId) {
+      await prisma.transaction.create({
+        data: {
+          type: 'BALANCE_RESET',
+          amount: 0,
+          previousBalance: previousBalance,
+          newBalance: 0,
+          description: 'Reset completo del balance de la empresa',
+          tenantId: tenantId,
+          userId: userId,  // Asegúrate de que userId tenga valor
+          status: 'COMPLETED',
+          // No necesitas incluir la relación company si ya tienes tenantId
+          // Prisma manejará la relación automáticamente
+        }
+      });
+    }
+    
+    logger.info(`Balance reseteado a 0. Empresa: ${tenantId}, Usuario: ${userId}, Balance anterior: ${previousBalance}`);
+    
+    return res.status(200).json({
+      success: true,
+      message: 'Balance reseteado a 0 exitosamente',
+      company: {
+        id: updatedCompany.id,
+        name: updatedCompany.name,
+        previousBalance: previousBalance,
+        newBalance: updatedCompany.currentBalance
+      },
+      resetBy: {
+        userId: userId,
+        role: role
+      },
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    logger.error('Error al resetear balance de la empresa:', error);
+    return res.status(500).json({ 
+      error: 'Error interno del servidor al resetear el balance',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
+module.exports = { createPayment, getPayments, getPaymentById, updatePayment, deletePayment, resetCompanyBalance }

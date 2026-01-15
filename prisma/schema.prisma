@@ -42,14 +42,19 @@ model Company {
   saleProductInvoices SaleProductInvoice[]
   purchaseProductInvoices PurchaseProductInvoice[]
   supplierDeposits SupplierDeposit[]
+  loans        Loan[] // AÑADE ESTA LÍNEA - Relación inversa con Loan
+
+  auditLogs    AuditLog[]      // Relación inversa con AuditLog
+  transactions Transaction[] 
 }
 
-model Client {w
+model Client {
   id             String    @id @default(uuid())
   tenantId       String
   identification String
   firstName      String
   lastName       String
+  phone          String?
   email          String    @unique
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
@@ -57,6 +62,7 @@ model Client {w
   // Relations
   tenant      Company      @relation(fields: [tenantId], references: [id])
   invoices    SaleInvoice[]
+  loans             Loan[]    
 }
 
 model SaleInvoice {
@@ -83,6 +89,7 @@ model SaleProductInvoice {
   productId     String
   invoiceId     String? 
   quantity      Float
+  unitPrice     Float?
 
   // Relations
   tenant      Company      @relation(fields: [tenantId], references: [id])
@@ -131,6 +138,9 @@ model User {
 
   // Relations
   tenant      Company?      @relation(fields: [tenantId], references: [id])
+
+  auditLogs   AuditLog[]    // Relación inversa con AuditLog
+  transactions Transaction[]
 }
 
 model Supplier {
@@ -208,4 +218,70 @@ model SupplierDeposit {
 
   tenant      Company   @relation(fields: [tenantId], references: [id])
   supplier    Supplier  @relation(fields: [supplierId], references: [id])
+}
+
+model Loan {
+  id                    String    @id @default(uuid())
+  clientId              String
+  clientName            String
+  clientIdentification  String
+  amount                Float
+  description           String?
+  status                Boolean   @default(false)  // false = pendiente, true = pagado
+  tenantId              String    // Referencia a la empresa
+  
+  // Timestamps
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  
+  // Relations
+  client                Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  company               Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@index([clientId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id          String    @id @default(uuid())
+  action      String
+  userId      String?
+  tenantId    String?
+  details     String?
+  ipAddress   String?
+  createdAt   DateTime  @default(now())
+  
+  // Relations
+  user        User?     @relation(fields: [userId], references: [id])
+  company     Company?  @relation(fields: [tenantId], references: [id])
+  
+  @@index([action])
+  @@index([userId])
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+model Transaction {
+  id              String    @id @default(uuid())
+  type            String    // BALANCE_RESET, DEPOSIT, WITHDRAWAL, etc.
+  amount          Float
+  previousBalance Float
+  newBalance      Float
+  description     String?
+  tenantId        String
+  userId          String
+  status          String    @default("COMPLETED")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relations
+  company         Company   @relation(fields: [tenantId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
+  
+  @@index([tenantId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
 }
