@@ -9,6 +9,7 @@ const router = express.Router();
 router.get('/search', authenticateJWT, clientController.searchClientsByName);
 router.post("/", authenticateJWT, assignTenant, clientController.createClient);
 router.get("/", authenticateJWT, clientController.getClients);
+router.get('/public', clientController.getPublicClients);
 router.get("/:id", authenticateJWT, clientController.getClientById);
 router.patch("/:id", authenticateJWT, requireRole('ADMIN', 'EDITOR', 'SUPERADMIN'), clientController.updateClient);
 router.delete("/:id", authenticateJWT, requireRole('ADMIN', 'EDITOR', 'SUPERADMIN'), clientController.deleteClient);

@@ -26,6 +26,8 @@ const analyticsRoutes = require('./routes/analyticsRoutes');
 const aiRoutes = require ('./routes/aiRoutes');
 const supplierDepositRoutes = require('./routes/SupplierDepositRoutes');
 const loanRoutes = require('./routes/loanRoutes');
+const deliveryRoutes = require('./routes/deliveryRoutes');
+const expenseRoutes = require('./routes/expenseRoutes');
 
 // Middlewares básicos
 app.use(helmet());
@@ -63,6 +65,13 @@ app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/supplier-deposits', supplierDepositRoutes);
 app.use('/api/v1/loans', loanRoutes);
+app.use("/api/v1/partners", require("./routes/partnerRoutes"));
+app.use("/api/v1/partner-payments", require("./routes/partnerPaymentRoutes"));
+app.use("/api/v1/partner-accounts",require("./routes/partnerAccountRoutes"));
+app.use("/api/v1/partner-packaging", require("./routes/partnerPackagingRoutes"));
+app.use('/api/v1/announcements', require('./routes/announcementRoutes'));
+app.use('/api/v1/deliveries', deliveryRoutes);
+app.use('/api/v1/expenses', expenseRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend is running' });

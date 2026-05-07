@@ -8,111 +8,139 @@ const fs = require('fs');
 const path = require('path');
 
 /**
- * Crear una nueva SaleInvoice
+ * Crear SaleInvoice ajustando inventarios específicos (Café, Pasilla, Cacao, etc.)
  */
 const createSaleInvoice = async (req, res) => {
   try {
-    const {
-      tenantId,
-      clientId,
-      totalPrice,
-      electronicBill,
-      products = []
-    } = req.body;
+    const { tenantId, clientId, totalPrice, electronicBill, products = [] } = req.body;
 
-    const invoiceCompany = await prisma.company.findUnique({
-      where: { id: tenantId }
-    });
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Crear la factura
+      const newSaleInvoice = await tx.saleInvoice.create({
+        data: {
+          date: new Date(),
+          totalPrice,
+          electronicBill,
+          tenant: { connect: { id: tenantId } },
+          client: { connect: { id: clientId } },
+        }
+      });
 
-    if (!invoiceCompany) {
-      return res.status(404).json({ error: 'Empresa no encontrada' });
-    }
-
-    // Crear la factura en la base de datos
-    const newSaleInvoice = await prisma.saleInvoice.create({
-      data: {
-        date: new Date(),
-        totalPrice,
-        electronicBill,
-        tenant: { connect: { id: tenantId } },
-        client: { connect: { id: clientId } },
-        invoiceProducts: {
-          create: products.map(p => ({
-            product: { connect: { id: p.productId } },
+      // 2. Procesar productos
+      for (const p of products) {
+        await tx.saleProductInvoice.create({
+          data: {
+            invoiceId: newSaleInvoice.id,
+            productId: p.productId,
             quantity: p.quantity,
             unitPrice: p.unitPrice,
-            tenant: { connect: { id: tenantId } }
-          }))
-        }
-      },
-      include: {
-        invoiceProducts: true,
-      }
-    }); 
+            tenantId: tenantId,
+            announcementId: p.announcementId || null // AHORA SÍ FUNCIONARÁ
+          }
+        });
 
-    await prisma.company.update({
-      where: { id: tenantId },
-      data: {
-        currentBalance: {
-          decrement: totalPrice
+        // 3. Lógica de Inventario en la tabla Company (según tu Schema)
+        const productInfo = await tx.product.findUnique({ where: { id: p.productId } });
+        const name = productInfo.name.toLowerCase();
+        
+        let updateField = "stock"; // por defecto
+        if (name.includes("cafe") && !name.includes("mojado")) updateField = "coffeeQuantity";
+        else if (name.includes("mojado")) updateField = "wetCoffeeQuantity";
+        else if (name.includes("frijol") || name.includes("almendra")) updateField = "beanQuantity";
+        else if (name.includes("pasilla")) updateField = "pasillaQuantity";
+        else if (name.includes("cacao")) updateField = "cacaoQuantity";
+
+        await tx.company.update({
+          where: { id: tenantId },
+          data: { [updateField]: { increment: p.quantity } }
+        });
+
+        // 4. DESCUENTO DEL ANUNCIO (FIJACIÓN)
+        if (p.announcementId) {
+          const ann = await tx.announcement.findUnique({ where: { id: p.announcementId } });
+          if (ann) {
+            const newRemant = Number(ann.remantQuantity) - Number(p.quantity);
+            await tx.announcement.update({
+              where: { id: p.announcementId },
+              data: { 
+                remantQuantity: newRemant, 
+                isActive: newRemant > 0 
+              }
+            });
+          }
         }
       }
+
+      // 5. Aumentar balance de dinero
+      await tx.company.update({
+        where: { id: tenantId },
+        data: { currentBalance: { decrement: totalPrice } }
+      });
+
+      return newSaleInvoice;
     });
 
-    // Si es factura electrónica, generar el XML
-    if (electronicBill) {
-      try {
-        // Obtener datos del cliente
-        const client = await prisma.client.findUnique({
-          where: { id: clientId }
-        });
-
-        // Obtener datos del tenant (empresa)
-        const tenant = await prisma.company.findUnique({
-          where: { id: tenantId }
-        });
-
-        // Obtener productos de la factura (puede ser vacío en este punto si se agregan después)
-        const products = await prisma.saleProductInvoice.findMany({
-          where: { invoiceId: newSaleInvoice.id },
-          include: { product: true }
-        });
-        
-        // Generar el XML
-        const xmlData = generarXMLFactura({
-          tenant,
-          client,
-          invoice: newSaleInvoice,
-          products
-        });
-        
-        // Guardar el XML en una carpeta
-        const invoicesDir = path.join(__dirname, '../../facturas_electronicas');
-        
-        // Crear directorio si no existe
-        if (!fs.existsSync(invoicesDir)) {
-          fs.mkdirSync(invoicesDir, { recursive: true });
-        }
-        
-        const xmlFilePath = path.join(invoicesDir, `factura_${newSaleInvoice.id}.xml`);
-        fs.writeFileSync(xmlFilePath, xmlData);
-        
-        logger.info(`Factura electrónica generada para: ${newSaleInvoice.id}`);
-        
-        // Opcional: aquí podrías enviar la factura a un servicio externo de facturación electrónica
-        // await enviarFacturaAProveedor(xmlData);
-      } catch (error) {
-        logger.error(`Error al generar factura electrónica: ${error.message}`);
-        // Nota: No abortamos la transacción, sólo registramos el error
-        
-      }
-    }
-    
-    logger.info(`Factura de venta creada exitosamente: ${newSaleInvoice.id}`);
-    return res.status(201).json(newSaleInvoice);
+    return res.status(201).json(result);
   } catch (error) {
-    logger.error('Error al crear SaleInvoice:', error);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    console.error(error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
+/**
+ * Eliminar SaleInvoice y REVERSAR los 5 tipos de inventario
+ */
+const deleteSaleInvoice = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await prisma.$transaction(async (tx) => {
+      const invoice = await tx.saleInvoice.findUnique({
+        where: { id },
+        include: { invoiceProducts: { include: { product: true } } }
+      });
+
+      if (!invoice) throw new Error('Factura no encontrada');
+
+      for (const item of invoice.invoiceProducts) {
+        let reverseData = {};
+        
+        // Reversamos el valor a la columna correspondiente
+        switch (item.product.name.toLowerCase()) {
+          case 'cafe': reverseData = { coffeeQuantity: { increment: item.quantity } }; break;
+          case 'cafe mojado': reverseData = { wetCoffeeQuantity: { increment: item.quantity } }; break;
+          case 'almendra': reverseData = { beanQuantity: { increment: item.quantity } }; break;
+          case 'pasilla': reverseData = { pasillaQuantity: { increment: item.quantity } }; break;
+          case 'cacao': reverseData = { cacaoQuantity: { increment: item.quantity } }; break;
+          default: reverseData = { stock: { increment: item.quantity } };
+        }
+
+        await tx.product.update({
+          where: { id: item.productId },
+          data: reverseData
+        });
+
+        if (item.announcementId) {
+          await tx.announcement.update({
+            where: { id: item.announcementId },
+            data: { remantQuantity: { increment: item.quantity }, isActive: true }
+          });
+        }
+      }
+
+      // Reversar dinero
+      await tx.company.update({
+        where: { id: invoice.tenantId },
+        data: { currentBalance: { decrement: invoice.totalPrice } }
+      });
+
+      await tx.saleProductInvoice.deleteMany({ where: { invoiceId: id } });
+      await tx.saleInvoice.delete({ where: { id } });
+    });
+
+    return res.status(200).json({ message: 'Venta eliminada y stock específico restaurado' });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
   }
 };
 
@@ -402,71 +430,6 @@ const updateSaleInvoice = async (req, res) => {
     return res.status(200).json(updatedSaleInvoice);
   } catch (error) {
     logger.error('Error al actualizar SaleInvoice:', error);
-    return res.status(500).json({ error: 'Error interno del servidor' });
-  }
-};
-
-/**
- * Eliminar SaleInvoice
- */
-const deleteSaleInvoice = async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    const existingSaleInvoice = await prisma.saleInvoice.findUnique({
-      where: { id },
-      select: { tenantId: true }
-    });
-    
-    if (!existingSaleInvoice) {
-      return res.status(404).json({ error: 'Factura de venta no encontrada' });
-    }
-    
-    if (req.user.role !== 'SUPERADMIN' && existingSaleInvoice.tenantId !== req.user.tenantId) {
-      logger.warn(`Intento de eliminación no autorizado. Usuario: ${req.user.id}, Factura de venta: ${id}`);
-      return res.status(403).json({ error: 'No autorizado para eliminar esta Factura de venta' });
-    }
-
-    // Obtener los productos vinculados a la factura
-    const invoiceProducts = await prisma.saleProductInvoice.findMany({
-      where: { invoiceId: id },
-      select: {
-        productId: true,
-        quantity: true
-      }
-    });
-
-    // Actualizar el stock de los productos sumando la cantidad eliminada
-    const updateStockPromises = invoiceProducts.map(({ productId, quantity }) =>
-      prisma.product.update({
-        where: { id: productId },
-        data: {
-          stock: {
-            increment: quantity
-          }
-        }
-      })
-    );
-
-    await Promise.all(updateStockPromises);
-
-    // Eliminar los registros de invoiceProduct
-    try{
-      await prisma.saleProductInvoice.deleteMany({
-        where: { invoiceId: id }
-      });
-    }catch(e){
-      console.error(e)
-    }
-
-    await prisma.saleInvoice.delete({
-      where: { id },
-    });
-
-    logger.info(`Factura de venta y productos vinculados eliminados exitosamente: ${id}`);
-    return res.status(200).json({ message: 'SaleInvoice y productos vinculados eliminados con éxito' });
-  } catch (error) {
-    logger.error('Error al eliminar SaleInvoice:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
   }
 };

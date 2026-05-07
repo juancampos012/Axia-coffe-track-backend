@@ -7,39 +7,59 @@ const logger = require('../config/logger');
  */
 const createPurchaseInvoice = async (req, res) => {
   try {
-    const {
-      tenantId,
-      supplierId,
-      date,
-      totalPrice
-    } = req.body;
+    const { tenantId, supplierId, date, totalPrice, products = [] } = req.body;
 
-    const invoiceCompany = await prisma.company.findUnique({
-      where: {id: tenantId}
-    })
-  
-    if (!invoiceCompany) {
-      return res.status(404).json({ error: 'Empresa no encontrada' });
-    }
-    
-    const newPurchaseInvoice = await prisma.purchaseInvoice.create({
-      data: {
-        date: new Date(date),
-        totalPrice,
-        tenant: {
-          connect: { id: tenantId}
-        },
-        supplier: { 
-          connect: { id: supplierId}
+    // Usamos una transacción para que todo sea atómico
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Crear la factura
+      const newInvoice = await tx.purchaseInvoice.create({
+        data: {
+          date: new Date(date),
+          totalPrice,
+          tenantId,
+          supplierId
         }
-      },
+      });
+
+      // 2. Procesar productos y anuncios
+      for (const item of products) {
+        await tx.purchaseProductInvoice.create({
+          data: {
+            purchaseInvoiceId: newInvoice.id,
+            tenantId,
+            productId: item.productId,
+            quantity: item.quantity,
+            announcementId: item.announcementId || null // Si viene de un anuncio
+          }
+        });
+
+        // Actualizar Stock
+        await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { increment: item.quantity } }
+        });
+
+        // LÓGICA DE ANUNCIO: Si tiene anuncio, restamos cantidad
+        if (item.announcementId) {
+          const ann = await tx.announcement.findUnique({ where: { id: item.announcementId } });
+          const newRemant = Number(ann.remantQuantity) - Number(item.quantity);
+          
+          await tx.announcement.update({
+            where: { id: item.announcementId },
+            data: { 
+              remantQuantity: newRemant,
+              isActive: newRemant > 0 // Se desactiva si llega a 0
+            }
+          });
+        }
+      }
+      return newInvoice;
     });
 
-    logger.info(`Factura de compra creada exitosamente: ${newPurchaseInvoice.id}`);
-    return res.status(201).json(newPurchaseInvoice);
+    return res.status(201).json(result);
   } catch (error) {
-    logger.error('Error al crear PurchaseInvoice:', error);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    logger.error('Error en createPurchaseInvoice:', error);
+    return res.status(500).json({ error: 'Error al procesar la compra' });
   }
 };
 
@@ -221,52 +241,30 @@ const deletePurchaseInvoice = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const existingPurchaseInvoice = await prisma.purchaseInvoice.findUnique({
-      where: { id },
-      select: { tenantId: true }
-    });
-    
-    if (!existingPurchaseInvoice) {
-      return res.status(404).json({ error: 'Factura de compra no encontrada' });
-    }
-    
-    if (req.user.role !== 'SUPERADMIN' && existingPurchaseInvoice.tenantId !== req.user.tenantId) {
-      logger.warn(`Intento de eliminación no autorizado. Usuario: ${req.user.id}, Factura de compra: ${id}`);
-      return res.status(403).json({ error: 'No autorizado para eliminar esta Factura de compra' });
-    }
+    await prisma.$transaction(async (tx) => {
+      const items = await tx.purchaseProductInvoice.findMany({
+        where: { purchaseInvoiceId: id }
+      });
 
-    // Obtener los productos vinculados a la factura
-    const invoiceProducts = await prisma.purchaseProductInvoice.findMany({
-      where: { purchaseInvoiceId: id },
-      select: {
-        productId: true,
-        quantity: true
-      }
-    });
+      for (const item of items) {
 
-    // Actualizar el stock de los productos sumando la cantidad eliminada
-    const updateStockPromises = invoiceProducts.map(({ productId, quantity }) =>
-      prisma.product.update({
-        where: { id: productId },
-        data: {
-          stock: {
-            decrement: quantity
-          }
+        if (item.announcementId) {
+          await tx.announcement.update({
+            where: { id: item.announcementId },
+            data: { 
+              remantQuantity: { increment: item.quantity },
+              isActive: true // Siempre se activa al devolverle kilos
+            }
+          });
         }
-      })
-    );
+      }
 
-    await Promise.all(updateStockPromises);
-
-    await prisma.purchaseInvoice.delete({
-      where: { id },
+      await tx.purchaseInvoice.delete({ where: { id } });
     });
 
-    logger.info(`Factura de compra eliminada exitosamente: ${id}`);
-    return res.status(200).json({ message: 'Factura de compra eliminada con éxito' });
+    return res.status(200).json({ message: 'Eliminado y saldos restaurados' });
   } catch (error) {
-    logger.error('Error al eliminar la Factura de compra:', error);
-    return res.status(500).json({ error: 'Error interno del servidor' });
+    return res.status(500).json({ error: 'Error al eliminar' });
   }
 };
 

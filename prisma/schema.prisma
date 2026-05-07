@@ -1,8 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+// This is your Prisma schema file
 
 generator client {
   provider = "prisma-client-js"
@@ -13,109 +9,15 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+//////////////////////////////////////////////////////
+// ENUMS
+//////////////////////////////////////////////////////
+
 enum Sector {
   RETAIL
   TECHNOLOGY
   FOOD
   HEALTH
-}
-
-model Company {
-  id          String    @id @default(uuid())
-  nit         String
-  name        String
-  address     String
-  phone       String
-  currentBalance Float   @default(0)
-  sector      Sector    @default(FOOD)
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-
-  // Relations
-  clients      Client[]
-  invoices     SaleInvoice[]
-  products     Product[]
-  users        User[]
-  suppliers    Supplier[]
-  payments     Payment[]
-  purchases    PurchaseInvoice[]
-  saleProductInvoices SaleProductInvoice[]
-  purchaseProductInvoices PurchaseProductInvoice[]
-  supplierDeposits SupplierDeposit[]
-  loans        Loan[] // AÑADE ESTA LÍNEA - Relación inversa con Loan
-
-  auditLogs    AuditLog[]      // Relación inversa con AuditLog
-  transactions Transaction[] 
-}
-
-model Client {
-  id             String    @id @default(uuid())
-  tenantId       String
-  identification String
-  firstName      String
-  lastName       String
-  phone          String?
-  email          String    @unique
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  // Relations
-  tenant      Company      @relation(fields: [tenantId], references: [id])
-  invoices    SaleInvoice[]
-  loans             Loan[]    
-}
-
-model SaleInvoice {
-  id                  String    @id @default(uuid())
-  tenantId            String
-  clientId            String
-  paymentId           String? 
-  date                DateTime
-  totalPrice          Float
-  electronicBill      Boolean @default(false)
-  payment             Payment?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-
-  // Relations
-  tenant              Company      @relation(fields: [tenantId], references: [id])
-  client              Client       @relation(fields: [clientId], references: [id])
-  invoiceProducts     SaleProductInvoice[]
-}
-
-model SaleProductInvoice {
-  id            String    @id @default(uuid())
-  tenantId      String
-  productId     String
-  invoiceId     String? 
-  quantity      Float
-  unitPrice     Float?
-
-  // Relations
-  tenant      Company      @relation(fields: [tenantId], references: [id])
-  product     Product      @relation(fields: [productId], references: [id])
-  invoice     SaleInvoice?      @relation(fields: [invoiceId], references: [id])
-}
-
-model Product {
-  id            String    @id @default(uuid())
-  tenantId      String
-  supplierId    String
-  name          String
-  description   String?
-  salePrice     Float?
-  purchasePrice Float?
-  tax           Float?
-  stock         Float
-  isDeleted     Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relations
-  tenant            Company      @relation(fields: [tenantId], references: [id])
-  supplier          Supplier     @relation(fields: [supplierId], references: [id])
-  saleProductInvoices   SaleProductInvoice[]
-  purchaseProductInvoices   PurchaseProductInvoice[]
 }
 
 enum Role {
@@ -125,83 +27,400 @@ enum Role {
   EDITOR
 }
 
-model User {
-  id          String    @id @default(uuid())
-  tenantId    String?
-  name        String
-  email       String    @unique
-  password    String
-  role        Role      @default(USER)
-  avatar      String?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+enum PartnerPaymentType {
+  DEPOSIT
+  WITHDRAWAL
+  PAYMENT
+  ADJUSTMENT
+  LOAN
+}
+
+enum PackagingMovementType {
+  DELIVERED_TO_PARTNER
+  RETURNED_BY_PARTNER
+  ADJUSTMENT
+}
+
+//////////////////////////////////////////////////////
+// COMPANY
+//////////////////////////////////////////////////////
+
+model Company {
+  id                       String    @id @default(uuid())
+  nit                      String
+  name                     String
+  address                  String
+  phone                    String
+  logoUrl                  String?
+
+  currentBalance           Decimal   @default(0) @db.Decimal(18,2)
+  coffeeQuantity           Decimal   @default(0) @db.Decimal(18,2)
+  wetCoffeeQuantity        Decimal   @default(0) @db.Decimal(18,2)
+  beanQuantity             Decimal   @default(0) @db.Decimal(18,2)
+  pasillaQuantity          Decimal   @default(0) @db.Decimal(18,2)
+  cacaoQuantity            Decimal   @default(0) @db.Decimal(18,2)
+  sector                   Sector    @default(FOOD)
+  createdAt                DateTime  @default(now())
+  updatedAt                DateTime  @updatedAt
 
   // Relations
-  tenant      Company?      @relation(fields: [tenantId], references: [id])
-
-  auditLogs   AuditLog[]    // Relación inversa con AuditLog
-  transactions Transaction[]
+  clients                  Client[]
+  announcements            Announcement[]
+  partners                 Partner[]
+  partnerPayments          PartnerPaymentItem[]
+  partnerPackagingMovements PartnerPackagingMovement[]
+  invoices                 SaleInvoice[]
+  products                 Product[]
+  users                    User[]
+  suppliers                Supplier[]
+  payments                 Payment[]
+  purchases                PurchaseInvoice[]
+  saleProductInvoices      SaleProductInvoice[]
+  purchaseProductInvoices  PurchaseProductInvoice[]
+  supplierDeposits         SupplierDeposit[]
+  loans                    Loan[]
+  auditLogs                AuditLog[]
+  transactions             Transaction[]
+  partnerAccounts          PartnerAccount[]
+  partnerAccountPayments   PartnerAccountPayment[]
+  expenses                 Expense[]
+  deliveries               Delivery[]
 }
+
+//////////////////////////////////////////////////////
+// CLIENTS
+//////////////////////////////////////////////////////
+
+model Client {
+  id               String    @id @default(uuid())
+  tenantId         String
+  identification   String
+
+  firstName        String
+  middleName       String?
+  lastName         String
+  secondLastName   String?
+
+  phone            String?
+  email            String?
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant           Company   @relation(fields: [tenantId], references: [id])
+  invoices         SaleInvoice[]
+  loans            Loan[]
+  announcements    Announcement[]
+
+  @@index([tenantId])
+  @@index([identification])
+  @@unique([tenantId, identification])
+}
+
+//////////////////////////////////////////////////////
+// ANNOUNCEMENTS
+//////////////////////////////////////////////////////
+
+model Announcement {
+  id              String    @id @default(uuid())
+  tenantId        String
+  clientId        String
+  productId       String?
+  
+  title           String
+  description     String?
+  
+  totalQuantity   Decimal   @db.Decimal(18,2)
+  remantQuantity  Decimal   @db.Decimal(18,2)
+  price           Decimal   @db.Decimal(18,2)
+  
+  isActive        Boolean   @default(true)
+
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  tenant          Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  product         Product?  @relation(fields: [productId], references: [id])
+  
+  purchaseItems   PurchaseProductInvoice[] 
+  saleItems       SaleProductInvoice[] @relation("SaleAnnouncements")
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([productId])
+}
+
+//////////////////////////////////////////////////////
+// PARTNERS / SOCIOS
+//////////////////////////////////////////////////////
+
+model Partner {
+  id                 String    @id @default(uuid())
+  tenantId           String
+
+  name               String
+  identification     String?
+  phone              String?
+  email              String?
+  address            String?
+  notes              String?
+
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  tenant             Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  paymentItems       PartnerPaymentItem[]
+  packagingMovements PartnerPackagingMovement[]
+  accounts           PartnerAccount[]
+
+  deliveries         Delivery[]
+
+  @@index([tenantId])
+  @@index([name])
+}
+
+model PartnerPaymentItem {
+  id            String    @id @default(uuid())
+
+  tenantId      String
+  partnerId     String
+
+  type          PartnerPaymentType
+  amount        Decimal   @db.Decimal(18,2)
+
+  description   String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant        Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner       Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// PARTNER PACKAGING MOVEMENTS
+//////////////////////////////////////////////////////
+
+model PartnerPackagingMovement {
+  id            String    @id @default(uuid())
+
+  tenantId      String
+  partnerId     String
+
+  type          PackagingMovementType
+  quantity      Decimal   @db.Decimal(18,2)
+
+  description   String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant        Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner       Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// SALES
+//////////////////////////////////////////////////////
+
+model SaleInvoice {
+  id               String    @id @default(uuid())
+  tenantId         String
+  clientId         String
+
+  date             DateTime
+  totalPrice       Decimal   @db.Decimal(18,2)
+  electronicBill   Boolean   @default(false)
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant           Company   @relation(fields: [tenantId], references: [id])
+  client           Client    @relation(fields: [clientId], references: [id])
+
+  invoiceProducts  SaleProductInvoice[]
+  payment          Payment?
+
+  @@index([tenantId])
+  @@index([clientId])
+}
+
+model SaleProductInvoice {
+  id              String    @id @default(uuid())
+  tenantId        String
+  productId       String
+  invoiceId       String?
+  announcementId  String?
+
+  quantity        Decimal   @db.Decimal(18,2)
+  unitPrice       Decimal?  @db.Decimal(18,2)
+
+  tenant          Company      @relation(fields: [tenantId], references: [id])
+  product         Product      @relation(fields: [productId], references: [id])
+  invoice         SaleInvoice? @relation(fields: [invoiceId], references: [id])
+
+  announcement    Announcement? @relation("SaleAnnouncements", fields: [announcementId], references: [id])
+
+  @@index([tenantId])
+  @@index([productId])
+  @@index([invoiceId])
+}
+
+//////////////////////////////////////////////////////
+// PRODUCTS
+//////////////////////////////////////////////////////
+
+model Product {
+  id                      String    @id @default(uuid())
+  tenantId                String
+  supplierId              String
+
+  name                    String
+  description             String?
+
+  salePrice               Decimal?  @db.Decimal(18,2)
+  purchasePrice           Decimal?  @db.Decimal(18,2)
+  tax                     Decimal?  @db.Decimal(5,2)
+
+  stock                   Decimal   @db.Decimal(18,2)
+
+  isDeleted               Boolean   @default(false)
+
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  tenant                  Company   @relation(fields: [tenantId], references: [id])
+  supplier                Supplier  @relation(fields: [supplierId], references: [id])
+
+  saleProductInvoices     SaleProductInvoice[]
+  purchaseProductInvoices PurchaseProductInvoice[]
+  announcements           Announcement[]
+  deliveries Delivery[]
+
+  @@index([tenantId])
+  @@index([supplierId])
+}
+
+//////////////////////////////////////////////////////
+// USERS
+//////////////////////////////////////////////////////
+
+model User {
+  id            String    @id @default(uuid())
+  tenantId      String?
+
+  name          String
+  email         String    @unique
+  password      String
+
+  role          Role      @default(USER)
+  avatar        String?
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant        Company?  @relation(fields: [tenantId], references: [id])
+
+  auditLogs     AuditLog[]
+  transactions  Transaction[]
+}
+
+//////////////////////////////////////////////////////
+// SUPPLIERS
+//////////////////////////////////////////////////////
 
 model Supplier {
-  id          String    @id @default(uuid())
-  tenantId    String
-  nit         String
-  name        String
-  phone       String
-  address     String
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  id               String    @id @default(uuid())
+  tenantId         String
 
-  // Relations
-  tenant      Company      @relation(fields: [tenantId], references: [id])
-  products    Product[]
-  purchases   PurchaseInvoice[]
+  nit              String
+  name             String
+  phone            String
+  address          String
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  tenant           Company   @relation(fields: [tenantId], references: [id])
+
+  products         Product[]
+  purchases        PurchaseInvoice[]
   supplierDeposits SupplierDeposit[]
 }
+
+//////////////////////////////////////////////////////
+// PAYMENTS
+//////////////////////////////////////////////////////
 
 model Payment {
   id            String    @id @default(uuid())
   tenantId      String
+
   paymentDate   DateTime
-  amount        Float
+  amount        Decimal   @db.Decimal(18,2)
+
   paymentMethod String
   reference     String
+
   invoiceId     String    @unique
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relations
-  tenant      Company      @relation(fields: [tenantId], references: [id])
-  invoice     SaleInvoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  tenant        Company     @relation(fields: [tenantId], references: [id])
+  invoice       SaleInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
 }
+
+//////////////////////////////////////////////////////
+// PURCHASES
+//////////////////////////////////////////////////////
 
 model PurchaseInvoice {
   id            String    @id @default(uuid())
   tenantId      String
   supplierId    String
+
   date          DateTime
-  totalPrice    Float
+  totalPrice    Decimal   @db.Decimal(18,2)
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  // Relations
-  tenant      Company      @relation(fields: [tenantId], references: [id])
-  supplier    Supplier     @relation(fields: [supplierId], references: [id])
-  products    PurchaseProductInvoice[]
+  tenant        Company   @relation(fields: [tenantId], references: [id])
+  supplier      Supplier  @relation(fields: [supplierId], references: [id])
+
+  products      PurchaseProductInvoice[]
 }
 
 model PurchaseProductInvoice {
-  id                String         @id @default(uuid())
+  id                String    @id @default(uuid())
   tenantId          String
   productId         String
   purchaseInvoiceId String
-  quantity          Int
+  announcementId    String?
 
-  tenant          Company          @relation(fields: [tenantId], references: [id])
-  product         Product          @relation(fields: [productId], references: [id])
-  purchaseInvoice PurchaseInvoice  @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  quantity          Decimal   @db.Decimal(18,2)
+
+  tenant            Company   @relation(fields: [tenantId], references: [id])
+  product           Product   @relation(fields: [productId], references: [id])
+  purchaseInvoice   PurchaseInvoice @relation(fields: [purchaseInvoiceId], references: [id], onDelete: Cascade)
+  announcement      Announcement? @relation(fields: [announcementId], references: [id])
 }
+
+//////////////////////////////////////////////////////
+// TOKENS
+//////////////////////////////////////////////////////
 
 model RevokedToken {
   id        Int      @id @default(autoincrement())
@@ -209,79 +428,205 @@ model RevokedToken {
   createdAt DateTime @default(now())
 }
 
+//////////////////////////////////////////////////////
+// SUPPLIER DEPOSITS
+//////////////////////////////////////////////////////
+
 model SupplierDeposit {
   id          String   @id @default(uuid())
   tenantId    String
   supplierId  String
-  amount      Float
+
+  amount      Decimal  @db.Decimal(18,2)
+
   createdAt   DateTime @default(now())
 
-  tenant      Company   @relation(fields: [tenantId], references: [id])
-  supplier    Supplier  @relation(fields: [supplierId], references: [id])
+  tenant      Company  @relation(fields: [tenantId], references: [id])
+  supplier    Supplier @relation(fields: [supplierId], references: [id])
 }
+
+//////////////////////////////////////////////////////
+// LOANS
+//////////////////////////////////////////////////////
 
 model Loan {
   id                    String    @id @default(uuid())
+
   clientId              String
+  tenantId              String
+
   clientName            String
   clientIdentification  String
-  amount                Float
+
+  amount                Decimal   @db.Decimal(18,2)
   description           String?
-  status                Boolean   @default(false)  // false = pendiente, true = pagado
-  tenantId              String    // Referencia a la empresa
-  
-  // Timestamps
+
+  status                Boolean   @default(false)
+
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
-  
-  // Relations
+
   client                Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
   company               Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  
+
   @@index([clientId])
   @@index([tenantId])
   @@index([status])
   @@index([createdAt])
 }
 
+//////////////////////////////////////////////////////
+// AUDIT LOGS
+//////////////////////////////////////////////////////
+
 model AuditLog {
   id          String    @id @default(uuid())
+
   action      String
   userId      String?
   tenantId    String?
+
   details     String?
   ipAddress   String?
+
   createdAt   DateTime  @default(now())
-  
-  // Relations
+
   user        User?     @relation(fields: [userId], references: [id])
   company     Company?  @relation(fields: [tenantId], references: [id])
-  
+
   @@index([action])
   @@index([userId])
   @@index([tenantId])
   @@index([createdAt])
 }
 
+//////////////////////////////////////////////////////
+// TRANSACTIONS
+//////////////////////////////////////////////////////
+
 model Transaction {
   id              String    @id @default(uuid())
-  type            String    // BALANCE_RESET, DEPOSIT, WITHDRAWAL, etc.
-  amount          Float
-  previousBalance Float
-  newBalance      Float
+
+  type            String
+  amount          Decimal   @db.Decimal(18,2)
+
+  previousBalance Decimal   @db.Decimal(18,2)
+  newBalance      Decimal   @db.Decimal(18,2)
+
   description     String?
+
   tenantId        String
   userId          String
+
   status          String    @default("COMPLETED")
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
-  
-  // Relations
+
   company         Company   @relation(fields: [tenantId], references: [id])
   user            User      @relation(fields: [userId], references: [id])
-  
+
   @@index([tenantId])
   @@index([userId])
   @@index([type])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// PARTNER ACCOUNTS
+//////////////////////////////////////////////////////
+
+model PartnerAccount {
+  id             String    @id @default(uuid())
+
+  tenantId       String
+  partnerId      String
+
+  originalAmount Decimal   @db.Decimal(18,2)
+  pendingAmount  Decimal   @db.Decimal(18,2)
+
+  description    String?
+  isPaid         Boolean   @default(false)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant         Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner        Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+
+  payments       PartnerAccountPayment[]
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([isPaid])
+}
+
+//////////////////////////////////////////////////////
+// PARTNER ACCOUNT PAYMENTS
+//////////////////////////////////////////////////////
+
+model PartnerAccountPayment {
+  id           String    @id @default(uuid())
+
+  accountId    String
+  tenantId     String
+
+  amount       Decimal   @db.Decimal(18,2)
+  description  String?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  account      PartnerAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant       Company        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([tenantId])
+}
+
+//////////////////////////////////////////////////////
+// GASTOS
+//////////////////////////////////////////////////////
+
+model Expense {
+  id           String    @id @default(uuid())
+
+  tenantId     String
+
+  amount       Decimal   @db.Decimal(18,2)
+  description  String
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  tenant       Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// ENTREGAS
+//////////////////////////////////////////////////////
+
+model Delivery {
+  id            String    @id @default(uuid())
+
+  tenantId      String
+  partnerId     String
+  productId     String
+
+  productKg     Decimal   @db.Decimal(18,2)
+
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  tenant        Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  partner       Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
+  product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@index([partnerId])
+  @@index([productId])
   @@index([createdAt])
 }

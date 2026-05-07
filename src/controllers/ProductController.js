@@ -54,29 +54,32 @@ const getProducts = async (req, res) => {
   try {
     const { stock, salePrice, purchasePrice, supplier, tax, id, sortBy, order } = req.query;
     const tenantId = req.user.tenantId;
-    
-    // Condición base de filtrado por tenant
+
+    // 1. Condición base: Solo mi empresa (si no soy SUPERADMIN)
     let where = req.user.role === 'SUPERADMIN' ? {} : { tenantId };
-    
-    // Agregar filtros adicionales si existen
+
+    // 2. Filtros adicionales de búsqueda
     if (id) where.id = { contains: id, mode: 'insensitive' };
     if (supplier) where.supplier = { name: { contains: supplier, mode: 'insensitive' } };
-    
-    // Filtros numéricos (con validación)
+
     if (stock && !isNaN(Number(stock))) where.stock = { gte: Number(stock) };
     if (salePrice && !isNaN(Number(salePrice))) where.salePrice = { gte: Number(salePrice) };
     if (purchasePrice && !isNaN(Number(purchasePrice))) where.purchasePrice = { gte: Number(purchasePrice) };
     if (tax && !isNaN(Number(tax))) where.tax = { gte: Number(tax) };
-    
-    // Configurar ordenamiento
+
+    // 3. LA CORRECCIÓN: Unir los filtros con isDeleted
+    const finalWhere = {
+      ...where,
+      isDeleted: false
+    };
+
     const validSortFields = ['id', 'name', 'salePrice', 'purchasePrice', 'tax', 'stock'];
     const sortField = sortBy && validSortFields.includes(sortBy) ? sortBy : 'id';
     const sortOrder = order === 'desc' ? 'desc' : 'asc';
-    
     const orderBy = { [sortField]: sortOrder };
 
     const products = await prisma.product.findMany({
-      where: { isDeleted: false },
+      where: finalWhere, // <--- AHORA SÍ usamos el objeto filtrado
       select: {
         id: true,
         name: true,
@@ -88,8 +91,8 @@ const getProducts = async (req, res) => {
       },
       orderBy
     });
-    
-    logger.info(`Se obtuvieron ${products.length} productos con filtros: ${JSON.stringify(req.query)}`);
+
+    logger.info(`Se obtuvieron ${products.length} productos para el tenant: ${tenantId}`);
     return res.status(200).json(products);
   } catch (error) {
     logger.error('Error al obtener Products:', error);
