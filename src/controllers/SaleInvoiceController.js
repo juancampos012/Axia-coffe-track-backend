@@ -50,9 +50,16 @@ const createSaleInvoice = async (req, res) => {
         else if (name.includes("pasilla")) updateField = "pasillaQuantity";
         else if (name.includes("cacao")) updateField = "cacaoQuantity";
 
+        // Actualizar inventario global de la empresa
         await tx.company.update({
           where: { id: tenantId },
           data: { [updateField]: { increment: p.quantity } }
+        });
+
+        // Actualizar stock individual del producto
+        await tx.product.update({
+          where: { id: p.productId },
+          data: { stock: { increment: p.quantity } }
         });
 
         // 4. DESCUENTO DEL ANUNCIO (FIJACIÓN)

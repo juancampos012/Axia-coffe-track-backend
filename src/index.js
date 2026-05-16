@@ -28,6 +28,8 @@ const supplierDepositRoutes = require('./routes/SupplierDepositRoutes');
 const loanRoutes = require('./routes/loanRoutes');
 const deliveryRoutes = require('./routes/deliveryRoutes');
 const expenseRoutes = require('./routes/expenseRoutes');
+const clientAccountRoutes = require('./routes/clientAccountRoutes');
+const supplierAccountRoutes = require('./routes/supplierAccountRoutes');
 
 // Middlewares básicos
 app.use(helmet());
@@ -72,6 +74,8 @@ app.use("/api/v1/partner-packaging", require("./routes/partnerPackagingRoutes"))
 app.use('/api/v1/announcements', require('./routes/announcementRoutes'));
 app.use('/api/v1/deliveries', deliveryRoutes);
 app.use('/api/v1/expenses', expenseRoutes);
+app.use('/api/v1/client-accounts', clientAccountRoutes);
+app.use('/api/v1/supplier-accounts', supplierAccountRoutes);
 
 app.get('/api/v1/health', (req, res) => {
   res.json({ status: 'OK', message: 'Backend is running' });

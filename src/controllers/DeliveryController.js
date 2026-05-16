@@ -8,8 +8,15 @@ const logger = require("../config/logger");
 
 const createDelivery = async (req, res) => {
   try {
-    const { tenantId, partnerId, productId, productKg } = req.body;
-    const kgToDeliver = Number(productKg);
+    const { tenantId, partnerId, productId, quantity, unit, productKg, pricePerUnit, totalPrice } = req.body;
+
+    // Compatibilidad retroactiva: si viene productKg sin quantity, usamos productKg como cantidad kg
+    const deliveryUnit    = unit || 'kg';
+    const deliveryQty     = quantity !== undefined ? Number(quantity) : Number(productKg || 0);
+    // Para descontar stock siempre usamos kg: si unit===kg usamos quantity, si no, productKg equiv
+    const kgToDeliver = deliveryUnit === 'kg'
+      ? deliveryQty
+      : (productKg !== undefined ? Number(productKg) : 0);
 
     const result = await prisma.$transaction(async (tx) => {
       
@@ -57,19 +64,27 @@ const createDelivery = async (req, res) => {
         throw new Error("El producto no pertenece a una categoría de inventario global válida");
       }
 
-      // --- VALIDACIÓN DE STOCK GLOBAL DE LA EMPRESA ---
-      if (Number(company[updateField]) < kgToDeliver) {
+      // --- VALIDACIÓN DE STOCK GLOBAL DE LA EMPRESA (solo si hay kg a descontar) ---
+      if (kgToDeliver > 0 && Number(company[updateField]) < kgToDeliver) {
         throw new Error(`Stock global insuficiente en ${updateField}. Disponible: ${company[updateField]}kg`);
       }
 
       // 5. CREAR REGISTRO DE ENTREGA
+      const deliveryData = {
+        quantity: deliveryQty,
+        unit: deliveryUnit,
+        tenant: { connect: { id: tenantId } },
+        partner: { connect: { id: partnerId } },
+        product: { connect: { id: productId } }
+      };
+
+      // Campos opcionales
+      if (productKg !== undefined) deliveryData.productKg = Number(productKg);
+      if (pricePerUnit !== undefined) deliveryData.pricePerUnit = Number(pricePerUnit);
+      if (totalPrice !== undefined) deliveryData.totalPrice = Number(totalPrice);
+
       const delivery = await tx.delivery.create({
-        data: {
-          productKg: kgToDeliver,
-          tenant: { connect: { id: tenantId } },
-          partner: { connect: { id: partnerId } },
-          product: { connect: { id: productId } }
-        },
+        data: deliveryData,
         include: {
           tenant: true,
           partner: true,
@@ -77,21 +92,18 @@ const createDelivery = async (req, res) => {
         }
       });
 
-      // 6. DESCONTAR STOCK DEL PRODUCTO (Local)
-      await tx.product.update({
-        where: { id: productId },
-        data: {
-          stock: { decrement: kgToDeliver }
-        }
-      });
+      // 6 & 7. DESCONTAR STOCK solo si hay kg equivalentes
+      if (kgToDeliver > 0) {
+        await tx.product.update({
+          where: { id: productId },
+          data: { stock: { decrement: kgToDeliver } }
+        });
 
-      // 7. DESCONTAR INVENTARIO GLOBAL (Company)
-      await tx.company.update({
-        where: { id: tenantId },
-        data: {
-          [updateField]: { decrement: kgToDeliver }
-        }
-      });
+        await tx.company.update({
+          where: { id: tenantId },
+          data: { [updateField]: { decrement: kgToDeliver } }
+        });
+      }
 
       return delivery;
     });

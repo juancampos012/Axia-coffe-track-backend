@@ -83,6 +83,10 @@ model Company {
   transactions             Transaction[]
   partnerAccounts          PartnerAccount[]
   partnerAccountPayments   PartnerAccountPayment[]
+  clientAccounts           ClientAccount[]
+  clientAccountPayments    ClientAccountPayment[]
+  supplierAccounts         SupplierAccount[]
+  supplierAccountPayments  SupplierAccountPayment[]
   expenses                 Expense[]
   deliveries               Delivery[]
 }
@@ -111,6 +115,7 @@ model Client {
   invoices         SaleInvoice[]
   loans            Loan[]
   announcements    Announcement[]
+  clientAccounts   ClientAccount[]
 
   @@index([tenantId])
   @@index([identification])
@@ -357,6 +362,7 @@ model Supplier {
   products         Product[]
   purchases        PurchaseInvoice[]
   supplierDeposits SupplierDeposit[]
+  supplierAccounts SupplierAccount[]
 }
 
 //////////////////////////////////////////////////////
@@ -393,6 +399,7 @@ model PurchaseInvoice {
 
   date          DateTime
   totalPrice    Decimal   @db.Decimal(18,2)
+  factor        Decimal?  @db.Decimal(10,4)
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -411,6 +418,10 @@ model PurchaseProductInvoice {
   announcementId    String?
 
   quantity          Decimal   @db.Decimal(18,2)
+  unit              String?
+  basePrice         Decimal?  @db.Decimal(18,2)
+  factor            Decimal?  @db.Decimal(10,4)
+  unitPrice         Decimal?  @db.Decimal(18,2)
 
   tenant            Company   @relation(fields: [tenantId], references: [id])
   product           Product   @relation(fields: [productId], references: [id])
@@ -616,7 +627,11 @@ model Delivery {
   partnerId     String
   productId     String
 
-  productKg     Decimal   @db.Decimal(18,2)
+  quantity      Decimal   @db.Decimal(18,2)
+  unit          String    @default("kg")
+  productKg     Decimal?  @db.Decimal(18,2)
+  pricePerUnit  Decimal?  @db.Decimal(18,2)
+  totalPrice    Decimal?  @db.Decimal(18,2)
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -629,4 +644,100 @@ model Delivery {
   @@index([partnerId])
   @@index([productId])
   @@index([createdAt])
+}
+
+//////////////////////////////////////////////////////
+// CLIENT ACCOUNTS
+//////////////////////////////////////////////////////
+
+model ClientAccount {
+  id             String    @id @default(uuid())
+
+  tenantId       String
+  clientId       String
+
+  originalAmount Decimal   @db.Decimal(18,2)
+  pendingAmount  Decimal   @db.Decimal(18,2)
+
+  description    String?
+  isPaid         Boolean   @default(false)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant         Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  client         Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  payments       ClientAccountPayment[]
+
+  @@index([tenantId])
+  @@index([clientId])
+  @@index([isPaid])
+}
+
+model ClientAccountPayment {
+  id           String    @id @default(uuid())
+
+  accountId    String
+  tenantId     String
+
+  amount       Decimal   @db.Decimal(18,2)
+  description  String?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  account      ClientAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant       Company       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([tenantId])
+}
+
+//////////////////////////////////////////////////////
+// SUPPLIER ACCOUNTS
+//////////////////////////////////////////////////////
+
+model SupplierAccount {
+  id             String    @id @default(uuid())
+
+  tenantId       String
+  supplierId     String
+
+  originalAmount Decimal   @db.Decimal(18,2)
+  pendingAmount  Decimal   @db.Decimal(18,2)
+
+  description    String?
+  isPaid         Boolean   @default(false)
+
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tenant         Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  supplier       Supplier  @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+
+  payments       SupplierAccountPayment[]
+
+  @@index([tenantId])
+  @@index([supplierId])
+  @@index([isPaid])
+}
+
+model SupplierAccountPayment {
+  id           String    @id @default(uuid())
+
+  accountId    String
+  tenantId     String
+
+  amount       Decimal   @db.Decimal(18,2)
+  description  String?
+
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  account      SupplierAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  tenant       Company         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([accountId])
+  @@index([tenantId])
 }

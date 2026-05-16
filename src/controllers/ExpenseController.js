@@ -75,21 +75,38 @@ const getExpenses = async (req, res) => {
   try {
     const tenantId = req.user.tenantId;
 
-    const where = req.user.role === 'SUPERADMIN'
-      ? {}
-      : { tenantId };
+    // Paginación
+    const page  = Math.max(1, parseInt(req.query.page  || '1',  10));
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit || '10', 10)));
+    const skip  = (page - 1) * limit;
 
-    const expenses = await prisma.expense.findMany({
-      where,
-      include: {
-        tenant: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
+    // Filtros de fecha
+    const { startDate, endDate } = req.query;
+
+    const where = req.user.role === 'SUPERADMIN' ? {} : { tenantId };
+
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(`${startDate}T00:00:00.000Z`);
+      if (endDate)   where.createdAt.lte = new Date(`${endDate}T23:59:59.999Z`);
+    }
+
+    const [expenses, total] = await Promise.all([
+      prisma.expense.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.expense.count({ where }),
+    ]);
+
+    return res.status(200).json({
+      data: expenses,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit) || 1,
     });
-
-    return res.status(200).json(expenses);
 
   } catch (error) {
     logger.error('Error al obtener gastos:', error);

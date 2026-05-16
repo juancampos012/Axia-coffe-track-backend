@@ -2,7 +2,7 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 //////////////////////////////////////////////////////
-// RESUMEN — TODOS LOS ALIADOS (con o sin cuentas)
+// RESUMEN — TODOS LOS CLIENTES
 //////////////////////////////////////////////////////
 
 exports.getAccountsSummary = async (req, res) => {
@@ -10,32 +10,32 @@ exports.getAccountsSummary = async (req, res) => {
     const tenantId = req.user.tenantId;
     const where = req.user.role === 'SUPERADMIN' ? {} : { tenantId };
 
-    const [partners, accounts] = await Promise.all([
-      prisma.partner.findMany({ where }),
-      prisma.partnerAccount.findMany({
+    const [clients, accounts] = await Promise.all([
+      prisma.client.findMany({ where }),
+      prisma.clientAccount.findMany({
         where,
-        select: { partnerId: true, originalAmount: true, pendingAmount: true },
+        select: { clientId: true, originalAmount: true, pendingAmount: true },
       }),
     ]);
 
     const map = {};
     for (const acc of accounts) {
-      if (!map[acc.partnerId]) map[acc.partnerId] = { totalDebt: 0, pendingAmount: 0, totalPaid: 0 };
-      map[acc.partnerId].totalDebt     += Number(acc.originalAmount);
-      map[acc.partnerId].pendingAmount += Number(acc.pendingAmount);
-      map[acc.partnerId].totalPaid     += Number(acc.originalAmount) - Number(acc.pendingAmount);
+      if (!map[acc.clientId]) map[acc.clientId] = { totalDebt: 0, pendingAmount: 0, totalPaid: 0 };
+      map[acc.clientId].totalDebt     += Number(acc.originalAmount);
+      map[acc.clientId].pendingAmount += Number(acc.pendingAmount);
+      map[acc.clientId].totalPaid     += Number(acc.originalAmount) - Number(acc.pendingAmount);
     }
 
-    const summary = partners.map(p => ({
-      partnerId:     p.id,
-      partnerName:   p.name,
-      totalDebt:     map[p.id]?.totalDebt     ?? 0,
-      pendingAmount: map[p.id]?.pendingAmount ?? 0,
-      totalPaid:     map[p.id]?.totalPaid     ?? 0,
+    const summary = clients.map(c => ({
+      clientId:      c.id,
+      clientName:    `${c.firstName} ${c.lastName}`,
+      totalDebt:     map[c.id]?.totalDebt     ?? 0,
+      pendingAmount: map[c.id]?.pendingAmount ?? 0,
+      totalPaid:     map[c.id]?.totalPaid     ?? 0,
     }));
 
-    const globalPending = summary.reduce((s, p) => s + p.pendingAmount, 0);
-    const globalDebt    = summary.reduce((s, p) => s + p.totalDebt,    0);
+    const globalPending = summary.reduce((s, c) => s + c.pendingAmount, 0);
+    const globalDebt    = summary.reduce((s, c) => s + c.totalDebt,    0);
 
     res.json({ summary, globalPending, globalDebt });
   } catch (error) {
@@ -44,23 +44,23 @@ exports.getAccountsSummary = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////
-// DETALLE DE UN ALIADO — formato AccountDetail
+// DETALLE DE UN CLIENTE
 //////////////////////////////////////////////////////
 
-exports.getPartnerDetail = async (req, res) => {
+exports.getClientDetail = async (req, res) => {
   try {
-    const { partnerId } = req.params;
+    const { clientId } = req.params;
 
-    const [partner, accounts] = await Promise.all([
-      prisma.partner.findUnique({ where: { id: partnerId } }),
-      prisma.partnerAccount.findMany({
-        where: { partnerId },
+    const [client, accounts] = await Promise.all([
+      prisma.client.findUnique({ where: { id: clientId } }),
+      prisma.clientAccount.findMany({
+        where: { clientId },
         include: { payments: { orderBy: { createdAt: 'asc' } } },
         orderBy: { createdAt: 'asc' },
       }),
     ]);
 
-    if (!partner) return res.status(404).json({ error: 'Aliado no encontrado' });
+    if (!client) return res.status(404).json({ error: 'Cliente no encontrado' });
 
     let totalDebt = 0, totalPaid = 0, balance = 0;
     const movements = [];
@@ -88,8 +88,9 @@ exports.getPartnerDetail = async (req, res) => {
     movements.sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
 
     res.json({
-      personId: partner.id, personName: partner.name,
-      personPhone: partner.phone, personEmail: partner.email,
+      personId: client.id,
+      personName: `${client.firstName} ${client.lastName}`,
+      personPhone: client.phone, personEmail: client.email,
       balance, totalCharged: totalDebt, totalPaid, movements,
     });
   } catch (error) {
@@ -98,17 +99,17 @@ exports.getPartnerDetail = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////
-// CREAR DEUDA DE ALIADO
+// CREAR DEUDA DE CLIENTE
 //////////////////////////////////////////////////////
 
-exports.createPartnerAccount = async (req, res) => {
+exports.createClientAccount = async (req, res) => {
   try {
-    const { tenantId, partnerId, originalAmount, amount, description, affectsBalance = true } = req.body;
+    const { tenantId, clientId, originalAmount, amount, description, affectsBalance = true } = req.body;
     const parsed = parseFloat(originalAmount ?? amount);
     if (!parsed || parsed <= 0) return res.status(400).json({ error: 'Monto inválido' });
 
-    const account = await prisma.partnerAccount.create({
-      data: { tenantId, partnerId, originalAmount: parsed, pendingAmount: parsed, description },
+    const account = await prisma.clientAccount.create({
+      data: { tenantId, clientId, originalAmount: parsed, pendingAmount: parsed, description },
     });
 
     if (affectsBalance !== false) {
@@ -125,27 +126,26 @@ exports.createPartnerAccount = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////
-// ABONO POR ALIADO (distribuye en cuentas pendientes)
+// ABONO POR CLIENTE
 //////////////////////////////////////////////////////
 
-exports.updatePartnerPayment = async (req, res) => {
+exports.updateClientPayment = async (req, res) => {
   try {
     const { id } = req.params;
     const { description, amount } = req.body;
 
-    const payment = await prisma.partnerAccountPayment.findUnique({ where: { id } });
+    const payment = await prisma.clientAccountPayment.findUnique({ where: { id } });
     if (!payment) return res.status(404).json({ error: 'Pago no encontrado' });
 
     const data = {};
     if (description !== undefined) data.description = description;
 
-    // Si se cambia el monto, ajustar pendingAmount y balance
     if (amount !== undefined) {
       const parsed = parseFloat(amount);
       const diff = parsed - Number(payment.amount);
       data.amount = parsed;
 
-      await prisma.partnerAccount.update({
+      await prisma.clientAccount.update({
         where: { id: payment.accountId },
         data: { pendingAmount: { decrement: diff } },
       });
@@ -155,53 +155,51 @@ exports.updatePartnerPayment = async (req, res) => {
       });
     }
 
-    const updated = await prisma.partnerAccountPayment.update({ where: { id }, data });
+    const updated = await prisma.clientAccountPayment.update({ where: { id }, data });
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
 };
 
-exports.addPaymentByPartner = async (req, res) => {
+exports.addPaymentByClient = async (req, res) => {
   try {
-    const { partnerId, amount, description, affectsBalance = true } = req.body;
+    const { clientId, amount, description, affectsBalance = true } = req.body;
     const parsedAmount = parseFloat(amount);
     const tenantId = req.user.tenantId;
 
-    const unpaid = await prisma.partnerAccount.findMany({
-      where: { partnerId, isPaid: false },
+    const unpaid = await prisma.clientAccount.findMany({
+      where: { clientId, isPaid: false },
       orderBy: { createdAt: 'asc' },
     });
 
     let remaining = parsedAmount;
     const payments = [];
 
-    // Pagar cuentas pendientes (FIFO)
     for (const acc of unpaid) {
       if (remaining <= 0) break;
       const toApply = Math.min(remaining, Number(acc.pendingAmount));
       remaining -= toApply;
 
-      const payment = await prisma.partnerAccountPayment.create({
+      const payment = await prisma.clientAccountPayment.create({
         data: { accountId: acc.id, tenantId, amount: toApply, description },
       });
       payments.push(payment);
 
       const newPending = Number(acc.pendingAmount) - toApply;
-      await prisma.partnerAccount.update({
+      await prisma.clientAccount.update({
         where: { id: acc.id },
         data: { pendingAmount: newPending, isPaid: newPending <= 0 },
       });
     }
 
-    // Si pagó más de lo que debía → crear cuenta de crédito (nosotros quedamos debiendo)
     if (remaining > 0) {
-      const creditAccount = await prisma.partnerAccount.create({
+      const creditAccount = await prisma.clientAccount.create({
         data: {
-          tenantId, partnerId,
+          tenantId, clientId,
           originalAmount: -remaining,
           pendingAmount:  -remaining,
-          description: `Crédito a favor del aliado — ${description || 'sobrepago'}`,
+          description: `Crédito a favor del cliente — ${description || 'sobrepago'}`,
         },
       });
       payments.push({ type: 'credit', account: creditAccount });
@@ -224,23 +222,23 @@ exports.addPaymentByPartner = async (req, res) => {
 // ABONO POR ACCOUNTID (retrocompat)
 //////////////////////////////////////////////////////
 
-exports.addPartnerAccountPayment = async (req, res) => {
+exports.addClientAccountPayment = async (req, res) => {
   try {
     const { accountId, amount, description } = req.body;
     const parsedAmount = parseFloat(amount);
 
-    const account = await prisma.partnerAccount.findUnique({ where: { id: accountId } });
+    const account = await prisma.clientAccount.findUnique({ where: { id: accountId } });
     if (!account)   return res.status(404).json({ error: 'Cuenta no encontrada' });
     if (account.isPaid) return res.status(400).json({ error: 'Esta cuenta ya está saldada' });
     if (parsedAmount > Number(account.pendingAmount))
-      return res.status(400).json({ error: 'El abono no puede ser mayor al saldo pendiente' });
+      return res.status(400).json({ error: 'El abono no puede superar el saldo pendiente' });
 
-    const payment = await prisma.partnerAccountPayment.create({
+    const payment = await prisma.clientAccountPayment.create({
       data: { accountId, tenantId: account.tenantId, amount: parsedAmount, description },
     });
 
     const newPendingAmount = Number(account.pendingAmount) - parsedAmount;
-    const updatedAccount = await prisma.partnerAccount.update({
+    const updatedAccount = await prisma.clientAccount.update({
       where: { id: accountId },
       data: { pendingAmount: newPendingAmount, isPaid: newPendingAmount <= 0 },
     });
@@ -257,14 +255,14 @@ exports.addPartnerAccountPayment = async (req, res) => {
 };
 
 //////////////////////////////////////////////////////
-// OBTENER CUENTAS POR ALIADO
+// OBTENER CUENTAS POR CLIENTE
 //////////////////////////////////////////////////////
 
-exports.getPartnerAccounts = async (req, res) => {
+exports.getClientAccounts = async (req, res) => {
   try {
-    const { partnerId } = req.params;
-    const accounts = await prisma.partnerAccount.findMany({
-      where: { partnerId },
+    const { clientId } = req.params;
+    const accounts = await prisma.clientAccount.findMany({
+      where: { clientId },
       include: { payments: true },
       orderBy: { createdAt: 'desc' },
     });
@@ -278,11 +276,11 @@ exports.getPartnerAccounts = async (req, res) => {
 // OBTENER CUENTA POR ID
 //////////////////////////////////////////////////////
 
-exports.getPartnerAccountById = async (req, res) => {
+exports.getClientAccountById = async (req, res) => {
   try {
-    const account = await prisma.partnerAccount.findUnique({
+    const account = await prisma.clientAccount.findUnique({
       where: { id: req.params.id },
-      include: { payments: true, partner: true },
+      include: { payments: true, client: true },
     });
     if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
     res.json(account);
