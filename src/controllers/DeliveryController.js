@@ -8,7 +8,7 @@ const logger = require("../config/logger");
 
 const createDelivery = async (req, res) => {
   try {
-    const { tenantId, partnerId, productId, quantity, unit, productKg, pricePerUnit, totalPrice } = req.body;
+    const { tenantId, partnerId, productId, quantity, unit, productKg, pricePerUnit, totalPrice, createDebt } = req.body;
 
     // Compatibilidad retroactiva: si viene productKg sin quantity, usamos productKg como cantidad kg
     const deliveryUnit    = unit || 'kg';
@@ -19,7 +19,7 @@ const createDelivery = async (req, res) => {
       : (productKg !== undefined ? Number(productKg) : 0);
 
     const result = await prisma.$transaction(async (tx) => {
-      
+
       // 1. VALIDAR EMPRESA Y OBTENER STOCK GLOBAL
       const company = await tx.company.findUnique({
         where: { id: tenantId }
@@ -50,8 +50,8 @@ const createDelivery = async (req, res) => {
       } else if (productName.includes("cafe") || productName.includes("café")) {
         updateField = "coffeeQuantity";
       } else if (
-        productName.includes("frijol") || 
-        productName.includes("almendra") || 
+        productName.includes("frijol") ||
+        productName.includes("almendra") ||
         productName.includes("bean")
       ) {
         updateField = "beanQuantity";
@@ -105,7 +105,22 @@ const createDelivery = async (req, res) => {
         });
       }
 
-      return delivery;
+      // 8. CREAR DEUDA AL ALIADO (opcional)
+      let debtCreated = false;
+      if (createDebt === true && totalPrice !== undefined && Number(totalPrice) > 0) {
+        await tx.partnerAccount.create({
+          data: {
+            tenantId,
+            partnerId,
+            originalAmount: Number(totalPrice),
+            pendingAmount: Number(totalPrice),
+            description: `Entrega — ${product.name}`,
+          }
+        });
+        debtCreated = true;
+      }
+
+      return { ...delivery, debtCreated };
     });
 
     return res.status(201).json(result);
@@ -213,51 +228,93 @@ const updateDelivery = async (req, res) => {
 
     const { id } = req.params;
 
-    const {
-      partnerId,
-      productId,
-      productKg
-    } = req.body;
+    // Whitelist de campos editables
+    const { quantity, unit, productKg, pricePerUnit, totalPrice } = req.body;
 
     const existingDelivery = await prisma.delivery.findUnique({
       where: { id },
-      include: {
-        product: true
-      }
+      include: { product: true }
     });
 
     if (!existingDelivery) {
-      return res.status(404).json({
-        error: "Entrega no encontrada"
-      });
+      return res.status(404).json({ error: "Entrega no encontrada" });
     }
 
     if (
       req.user.role !== "SUPERADMIN" &&
       existingDelivery.tenantId !== req.user.tenantId
     ) {
-      return res.status(403).json({
-        error: "No autorizado"
-      });
+      return res.status(403).json({ error: "No autorizado" });
     }
 
-    const updatedDelivery = await prisma.delivery.update({
-      where: { id },
+    // --- CALCULAR DIFERENCIA DE KG PARA AJUSTAR STOCK ---
+    const oldUnit = existingDelivery.unit || 'kg';
+    const oldKg   = oldUnit === 'kg'
+      ? Number(existingDelivery.quantity)
+      : Number(existingDelivery.productKg || 0);
 
-      data: {
-        partnerId,
-        productId,
-        productKg
-      },
+    const newUnit = unit !== undefined ? unit : oldUnit;
+    const newQty  = quantity !== undefined ? Number(quantity) : Number(existingDelivery.quantity);
+    const newKg   = newUnit === 'kg'
+      ? newQty
+      : (productKg !== undefined ? Number(productKg) : Number(existingDelivery.productKg || 0));
 
-      include: {
-        tenant: true,
-        partner: true,
-        product: true
+    const diff = newKg - oldKg; // positivo = más stock consumido, negativo = se devuelve stock
+
+    const result = await prisma.$transaction(async (tx) => {
+
+      // Construir datos de actualización
+      const updateData = {};
+      if (quantity !== undefined)     updateData.quantity     = Number(quantity);
+      if (unit !== undefined)         updateData.unit         = unit;
+      if (productKg !== undefined)    updateData.productKg    = Number(productKg);
+      if (pricePerUnit !== undefined) updateData.pricePerUnit = Number(pricePerUnit);
+      if (totalPrice !== undefined)   updateData.totalPrice   = Number(totalPrice);
+
+      const updatedDelivery = await tx.delivery.update({
+        where: { id },
+        data: updateData,
+        include: { tenant: true, partner: true, product: true }
+      });
+
+      // Ajustar stock solo si cambió la cantidad en kg
+      if (diff !== 0) {
+        const productName = existingDelivery.product.name.toLowerCase();
+        let updateField = "";
+
+        if (productName.includes("mojado")) {
+          updateField = "wetCoffeeQuantity";
+        } else if (productName.includes("cafe") || productName.includes("café")) {
+          updateField = "coffeeQuantity";
+        } else if (
+          productName.includes("frijol") ||
+          productName.includes("almendra") ||
+          productName.includes("bean")
+        ) {
+          updateField = "beanQuantity";
+        } else if (productName.includes("pasilla")) {
+          updateField = "pasillaQuantity";
+        } else if (productName.includes("cacao")) {
+          updateField = "cacaoQuantity";
+        }
+
+        if (updateField) {
+          await tx.product.update({
+            where: { id: existingDelivery.productId },
+            data: { stock: { decrement: diff } }
+          });
+
+          await tx.company.update({
+            where: { id: existingDelivery.tenantId },
+            data: { [updateField]: { decrement: diff } }
+          });
+        }
       }
+
+      return updatedDelivery;
     });
 
-    return res.status(200).json(updatedDelivery);
+    return res.status(200).json(result);
 
   } catch (error) {
 

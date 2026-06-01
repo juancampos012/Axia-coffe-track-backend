@@ -66,9 +66,17 @@ exports.getPartnerById = async (req, res) => {
 
 exports.updatePartner = async (req, res) => {
   try {
+    const { name, phone, identification, email, address } = req.body;
+    const data = {};
+    if (name !== undefined)           data.name = name;
+    if (phone !== undefined)          data.phone = phone;
+    if (identification !== undefined) data.identification = identification;
+    if (email !== undefined)          data.email = email;
+    if (address !== undefined)        data.address = address;
+
     const partner = await prisma.partner.update({
       where: { id: req.params.id },
-      data: req.body
+      data
     });
 
     res.json(partner);
@@ -79,6 +87,19 @@ exports.updatePartner = async (req, res) => {
 
 exports.deletePartner = async (req, res) => {
   try {
+    const partner = await prisma.partner.findUnique({
+      where: { id: req.params.id },
+      select: { tenantId: true }
+    });
+
+    if (!partner) {
+      return res.status(404).json({ error: "Socio no encontrado" });
+    }
+
+    if (partner.tenantId !== req.user.tenantId) {
+      return res.status(403).json({ error: "No autorizado" });
+    }
+
     await prisma.partner.delete({
       where: { id: req.params.id }
     });

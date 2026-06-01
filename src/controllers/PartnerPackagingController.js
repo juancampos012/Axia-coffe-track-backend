@@ -36,25 +36,18 @@ exports.getPackagingMovements = async (req, res) => {
 
 exports.getPackagingBalance = async (req, res) => {
   try {
-    const movements = await prisma.partnerPackagingMovement.findMany({
-      where: { partnerId: req.params.partnerId }
+    const partnerId = req.params.partnerId;
+
+    const agg = await prisma.partnerPackagingMovement.groupBy({
+      by: ['type'],
+      where: { partnerId },
+      _sum: { quantity: true },
     });
 
-    let balance = 0;
+    const totals = { DELIVERED_TO_PARTNER: 0, RETURNED_BY_PARTNER: 0, ADJUSTMENT: 0 };
+    agg.forEach(r => { totals[r.type] = Number(r._sum.quantity ?? 0); });
 
-    movements.forEach(item => {
-      if (item.type === "DELIVERED_TO_PARTNER") {
-        balance += Number(item.quantity);
-      }
-
-      if (item.type === "RETURNED_BY_PARTNER") {
-        balance -= Number(item.quantity);
-      }
-
-      if (item.type === "ADJUSTMENT") {
-        balance += Number(item.quantity);
-      }
-    });
+    const balance = totals.DELIVERED_TO_PARTNER - totals.RETURNED_BY_PARTNER + totals.ADJUSTMENT;
 
     res.json({ packagingBalance: balance });
   } catch (error) {

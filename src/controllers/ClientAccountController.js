@@ -132,7 +132,7 @@ exports.createClientAccount = async (req, res) => {
 exports.updateClientPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, amount } = req.body;
+    const { description, amount, affectsBalance = true } = req.body;
 
     const payment = await prisma.clientAccountPayment.findUnique({ where: { id } });
     if (!payment) return res.status(404).json({ error: 'Pago no encontrado' });
@@ -149,13 +149,53 @@ exports.updateClientPayment = async (req, res) => {
         where: { id: payment.accountId },
         data: { pendingAmount: { decrement: diff } },
       });
-      await prisma.company.update({
-        where: { id: payment.tenantId },
-        data: { currentBalance: { increment: diff } },
-      });
+      if (affectsBalance !== false) {
+        await prisma.company.update({
+          where: { id: payment.tenantId },
+          data: { currentBalance: { increment: diff } },
+        });
+      }
     }
 
     const updated = await prisma.clientAccountPayment.update({ where: { id }, data });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// EDITAR CARGO DE CLIENTE (ClientAccount)
+//////////////////////////////////////////////////////
+
+exports.updateClientAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description, amount, affectsBalance = true } = req.body;
+
+    const account = await prisma.clientAccount.findUnique({ where: { id } });
+    if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+
+    const data = {};
+    if (description !== undefined) data.description = description;
+
+    if (amount !== undefined) {
+      const parsed = parseFloat(amount);
+      const alreadyPaid = Number(account.originalAmount) - Number(account.pendingAmount);
+      const diff = parsed - Number(account.originalAmount);
+      data.originalAmount = parsed;
+      data.pendingAmount  = Math.max(0, parsed - alreadyPaid);
+      data.isPaid         = data.pendingAmount <= 0;
+
+      if (affectsBalance !== false) {
+        await prisma.company.update({
+          where: { id: account.tenantId },
+          data: { currentBalance: { decrement: diff } },
+        });
+      }
+    }
+
+    const updated = await prisma.clientAccount.update({ where: { id }, data });
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -169,41 +209,43 @@ exports.addPaymentByClient = async (req, res) => {
     const tenantId = req.user.tenantId;
 
     const unpaid = await prisma.clientAccount.findMany({
-      where: { clientId, isPaid: false },
+      where: { clientId, isPaid: false, pendingAmount: { gt: 0 } },
       orderBy: { createdAt: 'asc' },
     });
 
     let remaining = parsedAmount;
     const payments = [];
 
-    for (const acc of unpaid) {
-      if (remaining <= 0) break;
-      const toApply = Math.min(remaining, Number(acc.pendingAmount));
-      remaining -= toApply;
+    await prisma.$transaction(async (tx) => {
+      for (const acc of unpaid) {
+        if (remaining <= 0) break;
+        const toApply = Math.min(remaining, Number(acc.pendingAmount));
+        remaining -= toApply;
 
-      const payment = await prisma.clientAccountPayment.create({
-        data: { accountId: acc.id, tenantId, amount: toApply, description },
-      });
-      payments.push(payment);
+        const payment = await tx.clientAccountPayment.create({
+          data: { accountId: acc.id, tenantId, amount: toApply, description },
+        });
+        payments.push(payment);
 
-      const newPending = Number(acc.pendingAmount) - toApply;
-      await prisma.clientAccount.update({
-        where: { id: acc.id },
-        data: { pendingAmount: newPending, isPaid: newPending <= 0 },
-      });
-    }
+        const newPending = Number(acc.pendingAmount) - toApply;
+        await tx.clientAccount.update({
+          where: { id: acc.id },
+          data: { pendingAmount: newPending, isPaid: newPending <= 0 },
+        });
+      }
 
-    if (remaining > 0) {
-      const creditAccount = await prisma.clientAccount.create({
-        data: {
-          tenantId, clientId,
-          originalAmount: -remaining,
-          pendingAmount:  -remaining,
-          description: `Crédito a favor del cliente — ${description || 'sobrepago'}`,
-        },
-      });
-      payments.push({ type: 'credit', account: creditAccount });
-    }
+      if (remaining > 0) {
+        const creditAccount = await tx.clientAccount.create({
+          data: {
+            tenantId, clientId,
+            originalAmount: -remaining,
+            pendingAmount:  -remaining,
+            description: `Crédito a favor del cliente — ${description || 'sobrepago'}`,
+          },
+        });
+        payments.push({ type: 'credit', account: creditAccount });
+      }
+    });
 
     if (affectsBalance !== false) {
       await prisma.company.update({

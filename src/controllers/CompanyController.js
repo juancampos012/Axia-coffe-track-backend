@@ -50,9 +50,19 @@ const getCompanyById = async (req, res) => {
 
     const company = await prisma.company.findUnique({
       where: { id: id },
-      include: {
-        clients: true,
-        users: true,
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        nit: true,
+        phone: true,
+        sector: true,
+        currentBalance: true,
+        coffeeQuantity: true,
+        wetCoffeeQuantity: true,
+        beanQuantity: true,
+        pasillaQuantity: true,
+        cacaoQuantity: true,
       }
     });
 

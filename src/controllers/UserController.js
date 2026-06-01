@@ -165,7 +165,7 @@ const login = async (req, res) => {
     );
 
     res.cookie('authToken', token, {
-      httpOnly: false, // impide acceso desde JS
+      httpOnly: true, // impide acceso desde JS
       secure: process.env.NODE_ENV === 'production', // true en prod
       sameSite: 'none', // o 'none' si usas HTTPS y dominios diferentes
       maxAge: 43200000, // 12 horas

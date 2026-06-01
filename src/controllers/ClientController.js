@@ -28,7 +28,15 @@ const getClients = async (req, res) => {
     const where = req.user.role === 'SUPERADMIN' ? {} : { tenantId };
     const clients = await prisma.client.findMany({
       where,
-      include: { tenant: true, invoices: true, announcements: true },
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+        phone: true,
+        email: true,
+        identification: true,
+        createdAt: true,
+      },
     });
     return res.status(200).json(clients);
   } catch (error) {
@@ -89,7 +97,14 @@ const deleteClient = async (req, res) => {
 
 const getPublicClients = async (req, res) => {
   try {
-    const clients = await prisma.client.findMany({ take: 20 });
+    const clients = await prisma.client.findMany({
+      take: 20,
+      select: {
+        id: true,
+        firstName: true,
+        lastName: true,
+      },
+    });
     return res.status(200).json(clients);
   } catch (error) {
     return res.status(500).json({ error: 'Error' });

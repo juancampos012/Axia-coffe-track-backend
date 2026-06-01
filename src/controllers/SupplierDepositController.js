@@ -36,6 +36,7 @@ const createSupplierDeposit = async (req, res) => {
 const getAllSupplierDeposits = async (req, res) => {
   try {
     const deposits = await prisma.supplierDeposit.findMany({
+      where: { tenantId: req.user.tenantId },
       include: {
         supplier: true,
         tenant: true
@@ -64,6 +65,10 @@ const getSupplierDepositById = async (req, res) => {
 
     if (!deposit) {
       return res.status(404).json({ error: 'Depósito no encontrado' });
+    }
+
+    if (deposit.tenantId !== req.user.tenantId) {
+      return res.status(403).json({ error: 'No autorizado' });
     }
 
     return res.status(200).json(deposit);

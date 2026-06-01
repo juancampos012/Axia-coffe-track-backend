@@ -131,7 +131,7 @@ exports.createPartnerAccount = async (req, res) => {
 exports.updatePartnerPayment = async (req, res) => {
   try {
     const { id } = req.params;
-    const { description, amount } = req.body;
+    const { description, amount, affectsBalance = true } = req.body;
 
     const payment = await prisma.partnerAccountPayment.findUnique({ where: { id } });
     if (!payment) return res.status(404).json({ error: 'Pago no encontrado' });
@@ -149,13 +149,54 @@ exports.updatePartnerPayment = async (req, res) => {
         where: { id: payment.accountId },
         data: { pendingAmount: { decrement: diff } },
       });
-      await prisma.company.update({
-        where: { id: payment.tenantId },
-        data: { currentBalance: { increment: diff } },
-      });
+      if (affectsBalance !== false) {
+        await prisma.company.update({
+          where: { id: payment.tenantId },
+          data: { currentBalance: { increment: diff } },
+        });
+      }
     }
 
     const updated = await prisma.partnerAccountPayment.update({ where: { id }, data });
+    res.json(updated);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// EDITAR CARGO DE ALIADO (PartnerAccount)
+//////////////////////////////////////////////////////
+
+exports.updatePartnerAccount = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { description, amount, affectsBalance = true } = req.body;
+
+    const account = await prisma.partnerAccount.findUnique({ where: { id } });
+    if (!account) return res.status(404).json({ error: 'Cuenta no encontrada' });
+
+    const data = {};
+    if (description !== undefined) data.description = description;
+
+    if (amount !== undefined) {
+      const parsed = parseFloat(amount);
+      const alreadyPaid = Number(account.originalAmount) - Number(account.pendingAmount);
+      const diff = parsed - Number(account.originalAmount);
+      data.originalAmount = parsed;
+      data.pendingAmount  = Math.max(0, parsed - alreadyPaid);
+      data.isPaid         = data.pendingAmount <= 0;
+
+      if (affectsBalance !== false) {
+        // Cargo = balance decreases. If cargo grows (diff > 0), balance decreases more.
+        await prisma.company.update({
+          where: { id: account.tenantId },
+          data: { currentBalance: { decrement: diff } },
+        });
+      }
+    }
+
+    const updated = await prisma.partnerAccount.update({ where: { id }, data });
     res.json(updated);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -169,43 +210,45 @@ exports.addPaymentByPartner = async (req, res) => {
     const tenantId = req.user.tenantId;
 
     const unpaid = await prisma.partnerAccount.findMany({
-      where: { partnerId, isPaid: false },
+      where: { partnerId, isPaid: false, pendingAmount: { gt: 0 } },
       orderBy: { createdAt: 'asc' },
     });
 
     let remaining = parsedAmount;
     const payments = [];
 
-    // Pagar cuentas pendientes (FIFO)
-    for (const acc of unpaid) {
-      if (remaining <= 0) break;
-      const toApply = Math.min(remaining, Number(acc.pendingAmount));
-      remaining -= toApply;
+    await prisma.$transaction(async (tx) => {
+      // Pagar cuentas pendientes (FIFO)
+      for (const acc of unpaid) {
+        if (remaining <= 0) break;
+        const toApply = Math.min(remaining, Number(acc.pendingAmount));
+        remaining -= toApply;
 
-      const payment = await prisma.partnerAccountPayment.create({
-        data: { accountId: acc.id, tenantId, amount: toApply, description },
-      });
-      payments.push(payment);
+        const payment = await tx.partnerAccountPayment.create({
+          data: { accountId: acc.id, tenantId, amount: toApply, description },
+        });
+        payments.push(payment);
 
-      const newPending = Number(acc.pendingAmount) - toApply;
-      await prisma.partnerAccount.update({
-        where: { id: acc.id },
-        data: { pendingAmount: newPending, isPaid: newPending <= 0 },
-      });
-    }
+        const newPending = Number(acc.pendingAmount) - toApply;
+        await tx.partnerAccount.update({
+          where: { id: acc.id },
+          data: { pendingAmount: newPending, isPaid: newPending <= 0 },
+        });
+      }
 
-    // Si pagó más de lo que debía → crear cuenta de crédito (nosotros quedamos debiendo)
-    if (remaining > 0) {
-      const creditAccount = await prisma.partnerAccount.create({
-        data: {
-          tenantId, partnerId,
-          originalAmount: -remaining,
-          pendingAmount:  -remaining,
-          description: `Crédito a favor del aliado — ${description || 'sobrepago'}`,
-        },
-      });
-      payments.push({ type: 'credit', account: creditAccount });
-    }
+      // Si pagó más de lo que debía → crear cuenta de crédito (nosotros quedamos debiendo)
+      if (remaining > 0) {
+        const creditAccount = await tx.partnerAccount.create({
+          data: {
+            tenantId, partnerId,
+            originalAmount: -remaining,
+            pendingAmount:  -remaining,
+            description: `Crédito a favor del aliado — ${description || 'sobrepago'}`,
+          },
+        });
+        payments.push({ type: 'credit', account: creditAccount });
+      }
+    });
 
     if (affectsBalance !== false) {
       await prisma.company.update({
