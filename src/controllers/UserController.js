@@ -181,7 +181,7 @@ const login = async (req, res) => {
     };
 
     logger.info(`Login exitoso para usuario: ${user.id}`);
-    return res.status(200).json({ user: userInfo });
+    return res.status(200).json({ user: userInfo, token });
   } catch (error) {
     logger.error('Error en login:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
