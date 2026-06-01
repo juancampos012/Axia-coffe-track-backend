@@ -165,9 +165,10 @@ const login = async (req, res) => {
     );
 
     res.cookie('authToken', token, {
-      httpOnly: true, // impide acceso desde JS
-      secure: process.env.NODE_ENV === 'production', // true en prod
-      sameSite: 'none', // o 'none' si usas HTTPS y dominios diferentes
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.COOKIE_DOMAIN || undefined, // '.axiacoffe.com' en prod
       maxAge: 43200000, // 12 horas
     });
 
