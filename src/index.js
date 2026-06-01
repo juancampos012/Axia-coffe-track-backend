@@ -34,7 +34,7 @@ const supplierAccountRoutes = require('./routes/supplierAccountRoutes');
 // Middlewares básicos
 app.use(helmet());
 app.use(cors({
-  origin: ['http://localhost:3000', 'https://axiainvoice.lat'],
+  origin: ['http://localhost:3000', 'http://localhost:3001', 'https://axiacoffe.com', 'https://www.axiacoffe.com'],
   credentials: true,
   methods: ['POST', 'GET', 'PATCH', 'DELETE'],
   allowedHeaders: ['Content-Type', 'Authorization']
