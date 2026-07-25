@@ -130,8 +130,10 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    const user = await prisma.user.findUnique({
-      where: { email },
+    // Insensible a mayúsculas: el frontend normaliza el email a minúsculas antes de
+    // enviarlo, pero cuentas existentes pueden tener el email guardado con mayúsculas.
+    const user = await prisma.user.findFirst({
+      where: { email: { equals: email, mode: 'insensitive' } },
       select: {
         id: true,
         name: true,
