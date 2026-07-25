@@ -11,6 +11,9 @@ router.get('/dashboard', authenticateJWT, analyticsController.getDashboardMetric
 // Métricas de operación (Préstamos, Contratos/Announcements y Empaques)
 router.get('/operations', authenticateJWT, analyticsController.getOperationMetrics);
 
+// Ingresos (abonos que nos hacen) y egresos (gastos) en un rango de fechas
+router.get('/cash-movements', authenticateJWT, analyticsController.getCashMovements);
+
 
 // --- RUTAS DE MÉTRICAS ESPECÍFICAS ---
 

@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const { computeCurrentPeriodTotals } = require('../utils/accountPeriod');
 
 //////////////////////////////////////////////////////
 // RESUMEN — TODOS LOS CLIENTES
@@ -14,25 +15,32 @@ exports.getAccountsSummary = async (req, res) => {
       prisma.client.findMany({ where }),
       prisma.clientAccount.findMany({
         where,
-        select: { clientId: true, originalAmount: true, pendingAmount: true },
+        select: {
+          clientId: true, originalAmount: true, pendingAmount: true,
+          createdAt: true, description: true,
+          payments: { select: { amount: true, createdAt: true, description: true } },
+        },
       }),
     ]);
 
     const map = {};
     for (const acc of accounts) {
-      if (!map[acc.clientId]) map[acc.clientId] = { totalDebt: 0, pendingAmount: 0, totalPaid: 0 };
-      map[acc.clientId].totalDebt     += Number(acc.originalAmount);
+      if (!map[acc.clientId]) map[acc.clientId] = { pendingAmount: 0, accounts: [] };
       map[acc.clientId].pendingAmount += Number(acc.pendingAmount);
-      map[acc.clientId].totalPaid     += Number(acc.originalAmount) - Number(acc.pendingAmount);
+      map[acc.clientId].accounts.push(acc);
     }
 
-    const summary = clients.map(c => ({
-      clientId:      c.id,
-      clientName:    `${c.firstName} ${c.lastName}`,
-      totalDebt:     map[c.id]?.totalDebt     ?? 0,
-      pendingAmount: map[c.id]?.pendingAmount ?? 0,
-      totalPaid:     map[c.id]?.totalPaid     ?? 0,
-    }));
+    const summary = clients.map(c => {
+      const entry = map[c.id];
+      const { totalCharged, totalPaid } = entry ? computeCurrentPeriodTotals(entry.accounts) : { totalCharged: 0, totalPaid: 0 };
+      return {
+        clientId:      c.id,
+        clientName:    `${c.firstName} ${c.lastName}`,
+        totalDebt:     totalCharged,
+        pendingAmount: entry?.pendingAmount ?? 0,
+        totalPaid,
+      };
+    });
 
     const globalPending = summary.reduce((s, c) => s + c.pendingAmount, 0);
     const globalDebt    = summary.reduce((s, c) => s + c.totalDebt,    0);
@@ -240,7 +248,7 @@ exports.addPaymentByClient = async (req, res) => {
             tenantId, clientId,
             originalAmount: -remaining,
             pendingAmount:  -remaining,
-            description: `Crédito a favor del cliente — ${description || 'sobrepago'}`,
+            description: `Crédito a favor del cliente por sobrepago${description ? ` (${description})` : ''}`,
           },
         });
         payments.push({ type: 'credit', account: creditAccount });
@@ -291,6 +299,29 @@ exports.addClientAccountPayment = async (req, res) => {
     });
 
     res.status(201).json({ payment, account: updatedAccount, balanceUpdated: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// CERRAR PERÍODO SIN SALDO PENDIENTE (marcador de historial)
+//////////////////////////////////////////////////////
+
+exports.closeClientPeriod = async (req, res) => {
+  try {
+    const { clientId, description } = req.body;
+    const tenantId = req.user.tenantId;
+
+    const marker = await prisma.clientAccount.create({
+      data: {
+        tenantId, clientId,
+        originalAmount: 0, pendingAmount: 0, isPaid: true,
+        description: description || 'Cierre de período',
+      },
+    });
+
+    res.status(201).json(marker);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

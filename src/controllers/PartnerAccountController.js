@@ -1,5 +1,6 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
+const { computeCurrentPeriodTotals } = require('../utils/accountPeriod');
 
 //////////////////////////////////////////////////////
 // RESUMEN — TODOS LOS ALIADOS (con o sin cuentas)
@@ -14,25 +15,32 @@ exports.getAccountsSummary = async (req, res) => {
       prisma.partner.findMany({ where }),
       prisma.partnerAccount.findMany({
         where,
-        select: { partnerId: true, originalAmount: true, pendingAmount: true },
+        select: {
+          partnerId: true, originalAmount: true, pendingAmount: true,
+          createdAt: true, description: true,
+          payments: { select: { amount: true, createdAt: true, description: true } },
+        },
       }),
     ]);
 
     const map = {};
     for (const acc of accounts) {
-      if (!map[acc.partnerId]) map[acc.partnerId] = { totalDebt: 0, pendingAmount: 0, totalPaid: 0 };
-      map[acc.partnerId].totalDebt     += Number(acc.originalAmount);
+      if (!map[acc.partnerId]) map[acc.partnerId] = { pendingAmount: 0, accounts: [] };
       map[acc.partnerId].pendingAmount += Number(acc.pendingAmount);
-      map[acc.partnerId].totalPaid     += Number(acc.originalAmount) - Number(acc.pendingAmount);
+      map[acc.partnerId].accounts.push(acc);
     }
 
-    const summary = partners.map(p => ({
-      partnerId:     p.id,
-      partnerName:   p.name,
-      totalDebt:     map[p.id]?.totalDebt     ?? 0,
-      pendingAmount: map[p.id]?.pendingAmount ?? 0,
-      totalPaid:     map[p.id]?.totalPaid     ?? 0,
-    }));
+    const summary = partners.map(p => {
+      const entry = map[p.id];
+      const { totalCharged, totalPaid } = entry ? computeCurrentPeriodTotals(entry.accounts) : { totalCharged: 0, totalPaid: 0 };
+      return {
+        partnerId:     p.id,
+        partnerName:   p.name,
+        totalDebt:     totalCharged,
+        pendingAmount: entry?.pendingAmount ?? 0,
+        totalPaid,
+      };
+    });
 
     const globalPending = summary.reduce((s, p) => s + p.pendingAmount, 0);
     const globalDebt    = summary.reduce((s, p) => s + p.totalDebt,    0);
@@ -243,7 +251,7 @@ exports.addPaymentByPartner = async (req, res) => {
             tenantId, partnerId,
             originalAmount: -remaining,
             pendingAmount:  -remaining,
-            description: `Crédito a favor del aliado — ${description || 'sobrepago'}`,
+            description: `Crédito a favor del aliado por sobrepago${description ? ` (${description})` : ''}`,
           },
         });
         payments.push({ type: 'credit', account: creditAccount });
@@ -294,6 +302,29 @@ exports.addPartnerAccountPayment = async (req, res) => {
     });
 
     res.status(201).json({ payment, account: updatedAccount, balanceUpdated: true });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+//////////////////////////////////////////////////////
+// CERRAR PERÍODO SIN SALDO PENDIENTE (marcador de historial)
+//////////////////////////////////////////////////////
+
+exports.closePartnerPeriod = async (req, res) => {
+  try {
+    const { partnerId, description } = req.body;
+    const tenantId = req.user.tenantId;
+
+    const marker = await prisma.partnerAccount.create({
+      data: {
+        tenantId, partnerId,
+        originalAmount: 0, pendingAmount: 0, isPaid: true,
+        description: description || 'Cierre de período',
+      },
+    });
+
+    res.status(201).json(marker);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

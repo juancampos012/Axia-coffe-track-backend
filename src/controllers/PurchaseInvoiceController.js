@@ -3,6 +3,20 @@ const prisma = new PrismaClient();
 const logger = require('../config/logger');
 
 /**
+ * Mapea el nombre de un producto al campo de cantidad global en Company
+ * (mismo criterio usado en DeliveryController para descontar stock)
+ */
+function getCompanyQuantityField(productName) {
+  const name = (productName || '').toLowerCase();
+  if (name.includes("mojado")) return "wetCoffeeQuantity";
+  if (name.includes("cafe") || name.includes("café")) return "coffeeQuantity";
+  if (name.includes("frijol") || name.includes("almendra") || name.includes("bean")) return "beanQuantity";
+  if (name.includes("pasilla")) return "pasillaQuantity";
+  if (name.includes("cacao")) return "cacaoQuantity";
+  return null;
+}
+
+/**
  * Crear una nueva PurchaseInvoice
  */
 const createPurchaseInvoice = async (req, res) => {
@@ -23,12 +37,16 @@ const createPurchaseInvoice = async (req, res) => {
 
       // 2. Procesar productos y anuncios
       for (const item of products) {
+        const product = await tx.product.findUnique({ where: { id: item.productId } });
+        const unitPrice = item.unitPrice !== undefined ? item.unitPrice : product?.purchasePrice;
+
         await tx.purchaseProductInvoice.create({
           data: {
             purchaseInvoiceId: newInvoice.id,
             tenantId,
             productId: item.productId,
             quantity: item.quantity,
+            unitPrice,
             announcementId: item.announcementId || null // Si viene de un anuncio
           }
         });
@@ -38,6 +56,15 @@ const createPurchaseInvoice = async (req, res) => {
           where: { id: item.productId },
           data: { stock: { increment: item.quantity } }
         });
+
+        // Actualizar stock global de la empresa por categoría
+        const companyField = getCompanyQuantityField(product?.name);
+        if (companyField) {
+          await tx.company.update({
+            where: { id: tenantId },
+            data: { [companyField]: { increment: item.quantity } }
+          });
+        }
 
         // LÓGICA DE ANUNCIO: Si tiene anuncio, restamos cantidad
         if (item.announcementId) {
@@ -159,7 +186,7 @@ const updatePurchaseInvoice = async (req, res) => {
 
     // 2. Resta cantidades anteriores del stock
     for (const item of previousProducts) {
-      await prisma.product.update({
+      const prevProduct = await prisma.product.update({
         where: { id: item.productId },
         data: {
           stock: {
@@ -167,6 +194,14 @@ const updatePurchaseInvoice = async (req, res) => {
           },
         },
       });
+
+      const prevCompanyField = getCompanyQuantityField(prevProduct?.name);
+      if (prevCompanyField) {
+        await prisma.company.update({
+          where: { id: existingPurchaseInvoice.tenantId },
+          data: { [prevCompanyField]: { decrement: item.quantity } },
+        });
+      }
     }
 
     // 3. Borra los productos anteriores
@@ -176,12 +211,16 @@ const updatePurchaseInvoice = async (req, res) => {
 
     // 4. Agrega nuevos productos y actualiza el stock
     for (const item of products) {
+      const product = await prisma.product.findUnique({ where: { id: item.productId } });
+      const unitPrice = item.unitPrice !== undefined ? item.unitPrice : product?.purchasePrice;
+
       await prisma.purchaseProductInvoice.create({
         data: {
           purchaseInvoice: { connect: { id: id}},
           tenant: { connect: { id: existingPurchaseInvoice.tenantId}},
           product: { connect: { id: item.productId}},
           quantity: item.quantity,
+          unitPrice,
         },
       });
 
@@ -193,6 +232,14 @@ const updatePurchaseInvoice = async (req, res) => {
           },
         },
       });
+
+      const companyField = getCompanyQuantityField(product?.name);
+      if (companyField) {
+        await prisma.company.update({
+          where: { id: existingPurchaseInvoice.tenantId },
+          data: { [companyField]: { increment: item.quantity } },
+        });
+      }
     }
 
     const updatedInvoice = await prisma.purchaseInvoice.update({
@@ -242,11 +289,24 @@ const deletePurchaseInvoice = async (req, res) => {
     const { id } = req.params;
 
     await prisma.$transaction(async (tx) => {
+      const invoice = await tx.purchaseInvoice.findUnique({ where: { id }, select: { tenantId: true } });
       const items = await tx.purchaseProductInvoice.findMany({
         where: { purchaseInvoiceId: id }
       });
 
       for (const item of items) {
+        const product = await tx.product.update({
+          where: { id: item.productId },
+          data: { stock: { decrement: item.quantity } }
+        });
+
+        const companyField = getCompanyQuantityField(product?.name);
+        if (companyField && invoice) {
+          await tx.company.update({
+            where: { id: invoice.tenantId },
+            data: { [companyField]: { decrement: item.quantity } }
+          });
+        }
 
         if (item.announcementId) {
           await tx.announcement.update({

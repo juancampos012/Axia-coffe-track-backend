@@ -220,6 +220,8 @@ model PartnerPackagingMovement {
   partnerId     String
 
   type          PackagingMovementType
+  /// Tipo de empaque físico: sacos, lona_pequena, lona_grande
+  packagingType String    @default("sacos")
   quantity      Decimal   @db.Decimal(18,2)
 
   description   String?
@@ -241,6 +243,8 @@ model PartnerPackagingMovement {
 
 model SaleInvoice {
   id               String    @id @default(uuid())
+  /// Folio correlativo (1, 2, 3...) para mostrar en recibos/liquidaciones
+  folio            Int       @unique @default(autoincrement())
   tenantId         String
   clientId         String
 
@@ -270,16 +274,37 @@ model SaleProductInvoice {
 
   quantity        Decimal   @db.Decimal(18,2)
   unitPrice       Decimal?  @db.Decimal(18,2)
+  /// Cantidad de este lote de compra aún no consumida por entregas (FIFO)
+  remainingQuantity Decimal @db.Decimal(18,2) @default(0)
 
   tenant          Company      @relation(fields: [tenantId], references: [id])
   product         Product      @relation(fields: [productId], references: [id])
   invoice         SaleInvoice? @relation(fields: [invoiceId], references: [id])
 
   announcement    Announcement? @relation("SaleAnnouncements", fields: [announcementId], references: [id])
+  consumptions    DeliveryConsumption[]
 
   @@index([tenantId])
   @@index([productId])
   @@index([invoiceId])
+}
+
+/// Registra exactamente qué lote(s) de compra se consumieron en cada entrega (FIFO)
+model DeliveryConsumption {
+  id                  String   @id @default(uuid())
+  deliveryId           String
+  saleProductInvoiceId String
+
+  quantity             Decimal  @db.Decimal(18,2)
+  unitPriceAtConsumption Decimal? @db.Decimal(18,2)
+
+  createdAt            DateTime @default(now())
+
+  delivery             Delivery            @relation(fields: [deliveryId], references: [id], onDelete: Cascade)
+  lot                  SaleProductInvoice  @relation(fields: [saleProductInvoiceId], references: [id])
+
+  @@index([deliveryId])
+  @@index([saleProductInvoiceId])
 }
 
 //////////////////////////////////////////////////////
@@ -632,6 +657,8 @@ model Delivery {
   productKg     Decimal?  @db.Decimal(18,2)
   pricePerUnit  Decimal?  @db.Decimal(18,2)
   totalPrice    Decimal?  @db.Decimal(18,2)
+  /// Costo real (FIFO) de los kilos entregados, según los lotes de compra consumidos
+  costOfGoods   Decimal?  @db.Decimal(18,2)
 
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -639,6 +666,7 @@ model Delivery {
   tenant        Company   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   partner       Partner   @relation(fields: [partnerId], references: [id], onDelete: Cascade)
   product       Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  consumptions  DeliveryConsumption[]
 
   @@index([tenantId])
   @@index([partnerId])

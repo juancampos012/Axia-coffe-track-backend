@@ -6,6 +6,7 @@ const { authenticateJWT } = require("../middlewares/auth");
 router.get("/summary",              authenticateJWT, controller.getAccountsSummary);
 router.get("/detail/:clientId",     authenticateJWT, controller.getClientDetail);
 router.post("/payment-by-client",   authenticateJWT, controller.addPaymentByClient);
+router.post("/close-period",        authenticateJWT, controller.closeClientPeriod);
 router.patch("/payment/:id",        authenticateJWT, controller.updateClientPayment);
 router.patch("/account/:id",        authenticateJWT, controller.updateClientAccount);
 router.post("/payment",             authenticateJWT, controller.addClientAccountPayment);

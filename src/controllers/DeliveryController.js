@@ -2,6 +2,86 @@ const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const logger = require("../config/logger");
 
+function getCompanyQuantityField(productName) {
+  const name = (productName || '').toLowerCase();
+  if (name.includes("mojado")) return "wetCoffeeQuantity";
+  if (name.includes("cafe") || name.includes("café")) return "coffeeQuantity";
+  if (name.includes("frijol") || name.includes("almendra") || name.includes("bean")) return "beanQuantity";
+  if (name.includes("pasilla")) return "pasillaQuantity";
+  if (name.includes("cacao")) return "cacaoQuantity";
+  return null;
+}
+
+/**
+ * Consume `kgToConsume` de los lotes de compra (SaleProductInvoice) más antiguos
+ * primero (FIFO), dentro de la transacción `tx`, para los productos de la misma
+ * categoría que `productId`. Crea un DeliveryConsumption por cada lote tocado.
+ * Lanza error si no hay suficientes kilos disponibles en los lotes.
+ * Devuelve el costo total (FIFO) de los kilos consumidos.
+ */
+async function consumeLotsFIFO(tx, { tenantId, categoryProductIds, kgToConsume, deliveryId }) {
+  if (kgToConsume <= 0) return 0;
+
+  const lots = await tx.saleProductInvoice.findMany({
+    where: {
+      tenantId,
+      productId: { in: categoryProductIds },
+      remainingQuantity: { gt: 0 },
+    },
+    include: { invoice: { select: { date: true } } },
+    orderBy: [{ invoice: { date: 'asc' } }],
+  });
+
+  let remaining = kgToConsume;
+  let totalCost = 0;
+
+  for (const lot of lots) {
+    if (remaining <= 0) break;
+    const available = Number(lot.remainingQuantity);
+    const take = Math.min(available, remaining);
+    if (take <= 0) continue;
+
+    await tx.saleProductInvoice.update({
+      where: { id: lot.id },
+      data: { remainingQuantity: { decrement: take } },
+    });
+
+    await tx.deliveryConsumption.create({
+      data: {
+        deliveryId,
+        saleProductInvoiceId: lot.id,
+        quantity: take,
+        unitPriceAtConsumption: lot.unitPrice,
+      },
+    });
+
+    totalCost += take * Number(lot.unitPrice || 0);
+    remaining -= take;
+  }
+
+  if (remaining > 0) {
+    throw new Error(
+      `Stock insuficiente en lotes de compra registrados. Faltan ${remaining.toFixed(2)}kg por cubrir (posiblemente stock cargado antes del sistema de lotes).`
+    );
+  }
+
+  return totalCost;
+}
+
+/**
+ * Revierte (devuelve a los lotes) todo lo consumido por una entrega.
+ */
+async function reverseLotsForDelivery(tx, deliveryId) {
+  const consumptions = await tx.deliveryConsumption.findMany({ where: { deliveryId } });
+  for (const c of consumptions) {
+    await tx.saleProductInvoice.update({
+      where: { id: c.saleProductInvoiceId },
+      data: { remainingQuantity: { increment: c.quantity } },
+    });
+  }
+  await tx.deliveryConsumption.deleteMany({ where: { deliveryId } });
+}
+
 //////////////////////////////////////////////////////
 // CREAR ENTREGA
 //////////////////////////////////////////////////////
@@ -42,25 +122,8 @@ const createDelivery = async (req, res) => {
       if (!product) throw new Error("Producto no encontrado");
 
       // 4. DETERMINAR CAMPO GLOBAL SEGÚN NOMBRE DEL PRODUCTO
-      const productName = product.name.toLowerCase();
-      let updateField = "";
-
-      if (productName.includes("mojado")) {
-        updateField = "wetCoffeeQuantity";
-      } else if (productName.includes("cafe") || productName.includes("café")) {
-        updateField = "coffeeQuantity";
-      } else if (
-        productName.includes("frijol") ||
-        productName.includes("almendra") ||
-        productName.includes("bean")
-      ) {
-        updateField = "beanQuantity";
-      } else if (productName.includes("pasilla")) {
-        updateField = "pasillaQuantity";
-      } else if (productName.includes("cacao")) {
-        updateField = "cacaoQuantity";
-      } else {
-        // Fallback por si no coincide con ninguno, puedes decidir si lanzar error
+      const updateField = getCompanyQuantityField(product.name);
+      if (!updateField) {
         throw new Error("El producto no pertenece a una categoría de inventario global válida");
       }
 
@@ -92,8 +155,23 @@ const createDelivery = async (req, res) => {
         }
       });
 
-      // 6 & 7. DESCONTAR STOCK solo si hay kg equivalentes
+      // 6 & 7. DESCONTAR STOCK consumiendo lotes de compra FIFO (más antiguos primero)
       if (kgToDeliver > 0) {
+        const categoryProductIds = (
+          await tx.product.findMany({ where: { tenantId }, select: { id: true, name: true } })
+        )
+          .filter((p) => getCompanyQuantityField(p.name) === updateField)
+          .map((p) => p.id);
+
+        const costOfGoods = await consumeLotsFIFO(tx, {
+          tenantId,
+          categoryProductIds,
+          kgToConsume: kgToDeliver,
+          deliveryId: delivery.id,
+        });
+
+        await tx.delivery.update({ where: { id: delivery.id }, data: { costOfGoods } });
+
         await tx.product.update({
           where: { id: productId },
           data: { stock: { decrement: kgToDeliver } }
@@ -279,35 +357,50 @@ const updateDelivery = async (req, res) => {
 
       // Ajustar stock solo si cambió la cantidad en kg
       if (diff !== 0) {
-        const productName = existingDelivery.product.name.toLowerCase();
-        let updateField = "";
-
-        if (productName.includes("mojado")) {
-          updateField = "wetCoffeeQuantity";
-        } else if (productName.includes("cafe") || productName.includes("café")) {
-          updateField = "coffeeQuantity";
-        } else if (
-          productName.includes("frijol") ||
-          productName.includes("almendra") ||
-          productName.includes("bean")
-        ) {
-          updateField = "beanQuantity";
-        } else if (productName.includes("pasilla")) {
-          updateField = "pasillaQuantity";
-        } else if (productName.includes("cacao")) {
-          updateField = "cacaoQuantity";
-        }
+        const updateField = getCompanyQuantityField(existingDelivery.product.name);
 
         if (updateField) {
+          // Revertir todo lo consumido por esta entrega y volver a consumir FIFO con la nueva cantidad
+          await reverseLotsForDelivery(tx, id);
+
           await tx.product.update({
             where: { id: existingDelivery.productId },
-            data: { stock: { decrement: diff } }
+            data: { stock: { increment: oldKg } }
           });
-
           await tx.company.update({
             where: { id: existingDelivery.tenantId },
-            data: { [updateField]: { decrement: diff } }
+            data: { [updateField]: { increment: oldKg } }
           });
+
+          if (newKg > 0) {
+            const categoryProductIds = (
+              await tx.product.findMany({ where: { tenantId: existingDelivery.tenantId }, select: { id: true, name: true } })
+            )
+              .filter((p) => getCompanyQuantityField(p.name) === updateField)
+              .map((p) => p.id);
+
+            const costOfGoods = await consumeLotsFIFO(tx, {
+              tenantId: existingDelivery.tenantId,
+              categoryProductIds,
+              kgToConsume: newKg,
+              deliveryId: id,
+            });
+            updateData.costOfGoods = costOfGoods;
+
+            await tx.product.update({
+              where: { id: existingDelivery.productId },
+              data: { stock: { decrement: newKg } }
+            });
+            await tx.company.update({
+              where: { id: existingDelivery.tenantId },
+              data: { [updateField]: { decrement: newKg } }
+            });
+          } else {
+            updateData.costOfGoods = 0;
+          }
+
+          await tx.delivery.update({ where: { id }, data: { costOfGoods: updateData.costOfGoods } });
+          updatedDelivery.costOfGoods = updateData.costOfGoods;
         }
       }
 
@@ -336,7 +429,8 @@ const deleteDelivery = async (req, res) => {
     const { id } = req.params;
 
     const existingDelivery = await prisma.delivery.findUnique({
-      where: { id }
+      where: { id },
+      include: { product: true }
     });
 
     if (!existingDelivery) {
@@ -354,8 +448,26 @@ const deleteDelivery = async (req, res) => {
       });
     }
 
-    await prisma.delivery.delete({
-      where: { id }
+    await prisma.$transaction(async (tx) => {
+      const updateField = getCompanyQuantityField(existingDelivery.product.name);
+      const kg = existingDelivery.unit === 'kg'
+        ? Number(existingDelivery.quantity)
+        : Number(existingDelivery.productKg || 0);
+
+      if (updateField && kg > 0) {
+        await reverseLotsForDelivery(tx, id);
+
+        await tx.product.update({
+          where: { id: existingDelivery.productId },
+          data: { stock: { increment: kg } }
+        });
+        await tx.company.update({
+          where: { id: existingDelivery.tenantId },
+          data: { [updateField]: { increment: kg } }
+        });
+      }
+
+      await tx.delivery.delete({ where: { id } });
     });
 
     return res.status(200).json({

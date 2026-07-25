@@ -4,6 +4,20 @@ const logger = require('../config/logger');
 const { Logform, Logger } = require("winston");
 
 /**
+ * Mapea el nombre de un producto al campo de cantidad global en Company
+ * (mismo criterio usado en DeliveryController para descontar stock)
+ */
+function getCompanyQuantityField(productName) {
+  const name = (productName || '').toLowerCase();
+  if (name.includes("mojado")) return "wetCoffeeQuantity";
+  if (name.includes("cafe") || name.includes("café")) return "coffeeQuantity";
+  if (name.includes("frijol") || name.includes("almendra") || name.includes("bean")) return "beanQuantity";
+  if (name.includes("pasilla")) return "pasillaQuantity";
+  if (name.includes("cacao")) return "cacaoQuantity";
+  return null;
+}
+
+/**
  * Crear un nuevo ProductInvoice
  */
 const createPurchaseProductInvoice = async (req, res) => {
@@ -12,7 +26,8 @@ const createPurchaseProductInvoice = async (req, res) => {
       tenantId,
       productId,
       invoiceId,
-      quantity
+      quantity,
+      unitPrice
     } = req.body;
 
     const purchaseCompany = await prisma.company.findUnique({
@@ -32,10 +47,13 @@ const createPurchaseProductInvoice = async (req, res) => {
       return res.status(404).json({ error: 'Producto no encontrado' });
     }
 
+    const finalUnitPrice = unitPrice !== undefined ? unitPrice : product.purchasePrice;
+
     // Crear la factura de compra
     const newPurchaseProductInvoice = await prisma.purchaseProductInvoice.create({
       data: {
         quantity,
+        unitPrice: finalUnitPrice,
         tenant: { connect: { id: tenantId}},
         purchaseInvoice: { connect: { id: invoiceId}},
         product: { connect: { id: productId}}
@@ -46,9 +64,18 @@ const createPurchaseProductInvoice = async (req, res) => {
     const updatedProduct = await prisma.product.update({
       where: { id: productId },
       data: {
-        stock: product.stock + parseInt(quantity)
+        stock: { increment: Number(quantity) }
       }
     });
+
+    // Actualizar stock global de la empresa por categoría
+    const companyField = getCompanyQuantityField(product.name);
+    if (companyField) {
+      await prisma.company.update({
+        where: { id: tenantId },
+        data: { [companyField]: { increment: Number(quantity) } }
+      });
+    }
 
     logger.info(`Producto de factura de compra creado exitosamente: ${newPurchaseProductInvoice.id}, Stock actualizado a: ${updatedProduct.stock}`);
     return res.status(201).json(newPurchaseProductInvoice);
@@ -122,7 +149,7 @@ const getPurchaseProductInvoiceById = async (req, res) => {
 const updatePurchaseProductInvoice = async (req, res) => {
   try {
     const { id } = req.params;
-    const { productId, invoiceId, quantity } = req.body;
+    const { productId, invoiceId, quantity, unitPrice } = req.body;
 
     // Obtener la factura de compra existente
     const existingInvoice = await prisma.purchaseProductInvoice.findUnique({
@@ -141,10 +168,11 @@ const updatePurchaseProductInvoice = async (req, res) => {
     }
 
     // Calcular la diferencia de stock
-    const oldQuantity = existingInvoice.quantity;
-    const newQuantity = parseInt(quantity);
+    const oldQuantity = Number(existingInvoice.quantity);
+    const newQuantity = Number(quantity);
     const stockDifference = newQuantity - oldQuantity;
-    
+    const oldCompanyField = getCompanyQuantityField(existingInvoice.product?.name);
+
     // Si cambia el producto, necesitamos actualizar ambos productos
     if (productId && productId !== existingInvoice.productId) {
       // Restar del producto anterior
@@ -152,18 +180,37 @@ const updatePurchaseProductInvoice = async (req, res) => {
         where: { id: existingInvoice.productId },
         data: { stock: { decrement: oldQuantity } }
       });
-      
+      if (oldCompanyField) {
+        await prisma.company.update({
+          where: { id: existingInvoice.tenantId },
+          data: { [oldCompanyField]: { decrement: oldQuantity } }
+        });
+      }
+
       // Sumar al nuevo producto
-      await prisma.product.update({
+      const newProduct = await prisma.product.update({
         where: { id: productId },
         data: { stock: { increment: newQuantity } }
       });
+      const newCompanyField = getCompanyQuantityField(newProduct.name);
+      if (newCompanyField) {
+        await prisma.company.update({
+          where: { id: existingInvoice.tenantId },
+          data: { [newCompanyField]: { increment: newQuantity } }
+        });
+      }
     } else {
       // Actualizar stock del mismo producto
       await prisma.product.update({
         where: { id: existingInvoice.productId },
         data: { stock: { increment: stockDifference } }
       });
+      if (oldCompanyField) {
+        await prisma.company.update({
+          where: { id: existingInvoice.tenantId },
+          data: { [oldCompanyField]: { increment: stockDifference } }
+        });
+      }
     }
 
     // Actualizar la factura
@@ -173,6 +220,7 @@ const updatePurchaseProductInvoice = async (req, res) => {
         productId: productId || existingInvoice.productId,
         invoiceId: invoiceId || existingInvoice.invoiceId,
         quantity: newQuantity,
+        unitPrice: unitPrice !== undefined ? unitPrice : existingInvoice.unitPrice,
       },
     });
 
@@ -212,6 +260,15 @@ const deletePurchaseProductInvoice = async (req, res) => {
       where: { id: existingInvoice.productId },
       data: { stock: { decrement: existingInvoice.quantity } }
     });
+
+    // Revertir stock global de la empresa por categoría
+    const companyField = getCompanyQuantityField(existingInvoice.product?.name);
+    if (companyField) {
+      await prisma.company.update({
+        where: { id: existingInvoice.tenantId },
+        data: { [companyField]: { decrement: existingInvoice.quantity } }
+      });
+    }
 
     // Eliminar la factura
     await prisma.purchaseProductInvoice.delete({

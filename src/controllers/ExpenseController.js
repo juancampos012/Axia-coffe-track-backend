@@ -87,8 +87,10 @@ const getExpenses = async (req, res) => {
 
     if (startDate || endDate) {
       where.createdAt = {};
-      if (startDate) where.createdAt.gte = new Date(`${startDate}T00:00:00.000Z`);
-      if (endDate)   where.createdAt.lte = new Date(`${endDate}T23:59:59.999Z`);
+      // Anclado a hora de Colombia (UTC-5), no UTC, para que un gasto de la noche
+      // caiga en el día correcto al buscarlo.
+      if (startDate) where.createdAt.gte = new Date(`${startDate}T00:00:00-05:00`);
+      if (endDate)   where.createdAt.lte = new Date(`${endDate}T23:59:59.999-05:00`);
     }
 
     const [expenses, total] = await Promise.all([

@@ -6,21 +6,48 @@ const logger = require('../config/logger');
 /**
  * Crear una nueva Company
  */
+const DEFAULT_PRODUCTS = ['Cafe Seco', 'Cafe Mojado', 'Cacao', 'Frijol', 'Pasilla'];
+
 const createCompany = async (req, res) => {
   try {
     const { nit, name, address, phone, sector } = req.body;
 
-    const newCompany = await prisma.company.create({
-      data: {
-        nit,
-        name,
-        address,
-        phone,
-        sector,
-      },
+    if (!nit || !name || !address || !phone) {
+      return res.status(400).json({ error: 'Nit, nombre, dirección y teléfono son obligatorios' });
+    }
+
+    const logoUrl = req.file ? `/uploads/companies/${req.file.filename}` : undefined;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const newCompany = await tx.company.create({
+        data: { nit, name, address, phone, sector, logoUrl },
+      });
+
+      // Proveedor predeterminado, requerido para poder crear los productos base
+      const defaultSupplier = await tx.supplier.create({
+        data: {
+          tenantId: newCompany.id,
+          nit: `${nit}-DEFAULT`,
+          name: 'Proveedor Predeterminado',
+          phone,
+          address,
+        },
+      });
+
+      await tx.product.createMany({
+        data: DEFAULT_PRODUCTS.map((productName) => ({
+          tenantId: newCompany.id,
+          supplierId: defaultSupplier.id,
+          name: productName,
+          stock: 0,
+        })),
+      });
+
+      return newCompany;
     });
-    logger.info(`Empresa creada exitosamente: ${newCompany.id}`);
-    return res.status(201).json(newCompany);
+
+    logger.info(`Empresa creada exitosamente con productos base: ${result.id}`);
+    return res.status(201).json(result);
   } catch (error) {
     logger.error('Error al crear Company:', error);
     return res.status(500).json({ error: 'Error interno del servidor' });
@@ -57,6 +84,7 @@ const getCompanyById = async (req, res) => {
         nit: true,
         phone: true,
         sector: true,
+        logoUrl: true,
         currentBalance: true,
         coffeeQuantity: true,
         wetCoffeeQuantity: true,
@@ -84,11 +112,22 @@ const getCompanyById = async (req, res) => {
 const updateCompany = async (req, res) => {
   try {
     const { id } = req.params;
-    const { nit, name, address, phone } = req.body;
+    const { nit, name, address, phone, sector } = req.body;
+
+    // Un ADMIN solo puede editar su propia empresa; SUPERADMIN puede editar cualquiera
+    if (req.user.role !== 'SUPERADMIN' && req.user.tenantId !== id) {
+      logger.warn(`Intento de editar otra empresa. Usuario: ${req.user.id}, Empresa: ${id}`);
+      return res.status(403).json({ error: 'No autorizado para modificar esta empresa' });
+    }
+
+    const data = { nit, name, address, phone, sector };
+    if (req.file) {
+      data.logoUrl = `/uploads/companies/${req.file.filename}`;
+    }
 
     const updatedCompany = await prisma.company.update({
       where: { id },
-      data: { nit, name, address, phone },
+      data,
     });
     logger.info(`Empresa actualizado exitosamente: ${id}`);
     return res.status(200).json(updatedCompany);

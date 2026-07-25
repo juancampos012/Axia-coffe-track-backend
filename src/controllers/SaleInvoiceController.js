@@ -6,6 +6,52 @@ require('jspdf-autotable');
 const { generarXMLFactura } = require('../utils/facturacionElectronica');
 const fs = require('fs');
 const path = require('path');
+const DEFAULT_LOGO_BASE64 = require('../assets/logoBase64');
+
+/** Lee el logo subido por la empresa desde disco y lo convierte a base64 para el PDF.
+ * Si la empresa no tiene logo propio, usa el logo genérico por defecto. */
+/** Detecta el formato real de una imagen por sus primeros bytes (magic numbers),
+ * en vez de confiar en la extensión del archivo (que puede no coincidir). */
+function detectImageFormat(buffer) {
+  if (buffer.length >= 8 && buffer[0] === 0x89 && buffer[1] === 0x50 && buffer[2] === 0x4e && buffer[3] === 0x47) {
+    return { ext: 'png', format: 'PNG' };
+  }
+  if (buffer.length >= 3 && buffer[0] === 0xff && buffer[1] === 0xd8 && buffer[2] === 0xff) {
+    return { ext: 'jpeg', format: 'JPEG' };
+  }
+  if (buffer.length >= 12 && buffer.toString('ascii', 0, 4) === 'RIFF' && buffer.toString('ascii', 8, 12) === 'WEBP') {
+    return { ext: 'webp', format: 'WEBP' };
+  }
+  return null;
+}
+
+function resolveCompanyLogo(logoUrl) {
+  if (!logoUrl) return { base64: DEFAULT_LOGO_BASE64, format: 'PNG' };
+  try {
+    const relativePath = logoUrl.replace(/^\/?uploads\//, '');
+    const fullPath = path.join(__dirname, '..', 'uploads', relativePath);
+    const buffer = fs.readFileSync(fullPath);
+
+    const detected = detectImageFormat(buffer);
+    const extRaw = detected?.ext || (path.extname(fullPath).slice(1).toLowerCase() || 'png');
+    const format = detected?.format || (extRaw === 'jpg' ? 'JPEG' : extRaw.toUpperCase());
+
+    return { base64: `data:image/${extRaw};base64,${buffer.toString('base64')}`, format };
+  } catch (error) {
+    logger.warn(`No se pudo cargar el logo de la empresa (${logoUrl}), usando logo por defecto`);
+    return { base64: DEFAULT_LOGO_BASE64, format: 'PNG' };
+  }
+}
+
+function getCompanyQuantityField(productName) {
+  const name = (productName || '').toLowerCase();
+  if (name.includes("mojado")) return "wetCoffeeQuantity";
+  if (name.includes("cafe") || name.includes("café")) return "coffeeQuantity";
+  if (name.includes("frijol") || name.includes("almendra") || name.includes("bean")) return "beanQuantity";
+  if (name.includes("pasilla")) return "pasillaQuantity";
+  if (name.includes("cacao")) return "cacaoQuantity";
+  return null;
+}
 
 /**
  * Crear SaleInvoice ajustando inventarios específicos (Café, Pasilla, Cacao, etc.)
@@ -34,6 +80,7 @@ const createSaleInvoice = async (req, res) => {
             productId: p.productId,
             quantity: p.quantity,
             unitPrice: p.unitPrice,
+            remainingQuantity: p.quantity, // Lote nuevo: todavía no se ha entregado nada de él
             tenantId: tenantId,
             announcementId: p.announcementId || null // AHORA SÍ FUNCIONARÁ
           }
@@ -110,21 +157,39 @@ const deleteSaleInvoice = async (req, res) => {
       if (!invoice) throw new Error('Factura no encontrada');
 
       for (const item of invoice.invoiceProducts) {
-        let reverseData = {};
-        
-        // Reversamos el valor a la columna correspondiente
-        switch (item.product.name.toLowerCase()) {
-          case 'cafe': reverseData = { coffeeQuantity: { increment: item.quantity } }; break;
-          case 'cafe mojado': reverseData = { wetCoffeeQuantity: { increment: item.quantity } }; break;
-          case 'almendra': reverseData = { beanQuantity: { increment: item.quantity } }; break;
-          case 'pasilla': reverseData = { pasillaQuantity: { increment: item.quantity } }; break;
-          case 'cacao': reverseData = { cacaoQuantity: { increment: item.quantity } }; break;
-          default: reverseData = { stock: { increment: item.quantity } };
+        // Si una entrega (FIFO) ya consumió kilos de este lote, no se puede borrar sin
+        // dejar esa entrega sin respaldo de costo. Hay que revertir esa entrega primero.
+        const consumptionCount = await tx.deliveryConsumption.count({
+          where: { saleProductInvoiceId: item.id }
+        });
+        if (consumptionCount > 0) {
+          throw new Error(
+            `No se puede eliminar: el lote de "${item.product.name}" ya fue consumido por una o más entregas. Elimina primero esas entregas.`
+          );
+        }
+
+        const name = item.product.name.toLowerCase();
+        let companyField = null;
+        if (name.includes("mojado")) companyField = "wetCoffeeQuantity";
+        else if (name.includes("cafe") || name.includes("café")) companyField = "coffeeQuantity";
+        else if (name.includes("frijol") || name.includes("almendra") || name.includes("bean")) companyField = "beanQuantity";
+        else if (name.includes("pasilla")) companyField = "pasillaQuantity";
+        else if (name.includes("cacao")) companyField = "cacaoQuantity";
+
+        // Solo se revierte lo que el lote realmente aporta hoy al stock (remainingQuantity),
+        // no la cantidad original de la factura.
+        const stockToReverse = item.remainingQuantity;
+
+        if (companyField) {
+          await tx.company.update({
+            where: { id: invoice.tenantId },
+            data: { [companyField]: { decrement: stockToReverse } }
+          });
         }
 
         await tx.product.update({
           where: { id: item.productId },
-          data: reverseData
+          data: { stock: { decrement: stockToReverse } }
         });
 
         if (item.announcementId) {
@@ -203,7 +268,8 @@ const getPublicSaleInvoices = async (req, res) => {
 };
 
 /**
- * Obtener PDF de SaleInvoice
+ * Obtener PDF de SaleInvoice (mismo formato de recibo térmico de 80mm
+ * que se genera al completar la venta en el frontend)
  */
 const getSaleInvoicePDF = async (req, res) => {
   try {
@@ -227,79 +293,200 @@ const getSaleInvoicePDF = async (req, res) => {
       return res.status(404).json({ error: 'Factura no encontrada' });
     }
 
-    const doc = new jsPDF();
-
-    // Encabezado
-    doc.setFontSize(18);
-    doc.text('Factura de Venta', 14, 22);
-    doc.setFontSize(12);
-    doc.text(`ID Factura: ${saleInvoice.id}`, 14, 32);
-    doc.text(`Fecha: ${new Date(saleInvoice.date).toLocaleString()}`, 14, 38);
-
-    // Información del cliente
     const client = saleInvoice.client || {};
-    let y = 46;
-    doc.text(`Cliente: ${client.firstName} ${client.lastName}`, 14, y);
-    if (client.identification) {
-      y += 6;
-      doc.text(`Identificación: ${client.identification}`, 14, y);
+    const company = saleInvoice.tenant || {};
+    const items = (saleInvoice.invoiceProducts || []).map((item) => {
+      const unitPrice = Number(item.unitPrice ?? item.product?.salePrice ?? 0);
+      const tax = Number(item.product?.tax ?? 0);
+      const basePrice = unitPrice / (1 + tax / 100);
+      return {
+        name: item.product?.name || 'Producto',
+        quantity: Number(item.quantity || 0),
+        price: unitPrice,
+        basePrice,
+      };
+    });
+
+    const subtotal = items.reduce((s, i) => s + i.quantity * i.basePrice, 0);
+    const taxTotal = items.reduce((s, i) => s + i.quantity * (i.price - i.basePrice), 0);
+    const total = Number(saleInvoice.totalPrice) || (subtotal + taxTotal);
+
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: [80, (items.length * 8) + 140],
+    });
+
+    let yPosition = 5;
+    const pageWidth = 80;
+    const margin = 4;
+    const contentWidth = pageWidth - margin * 2;
+
+    const centerText = (text, y, fontSize = 10) => {
+      doc.setFontSize(fontSize);
+      const textWidth = doc.getTextWidth(text);
+      doc.text(text, (pageWidth - textWidth) / 2, y);
+    };
+
+    const rightAlignText = (text, y, fontSize = 9) => {
+      doc.setFontSize(fontSize);
+      const textWidth = doc.getTextWidth(text);
+      doc.text(text, pageWidth - margin - textWidth, y);
+    };
+
+    // === ENCABEZADO CON LOGO ===
+    try {
+      const logo = resolveCompanyLogo(company.logoUrl);
+      doc.addImage(logo.base64, logo.format, (pageWidth - 16) / 2, yPosition, 16, 16);
+      yPosition += 20;
+    } catch (error) {
+      yPosition += 3;
     }
-    if (client.phone) {
-      y += 6;
-      doc.text(`Teléfono: ${client.phone}`, 14, y);
+
+    if (company.name) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(12);
+      doc.setTextColor(0, 0, 0);
+      centerText(company.name.toUpperCase(), yPosition);
+      yPosition += 5.5;
     }
-    if (client.email) {
-      y += 6;
-      doc.text(`Correo: ${client.email}`, 14, y);
-    }
 
-    y += 10;
+    doc.setLineWidth(0.9);
+    doc.setDrawColor(0, 0, 0);
+    doc.line(margin + 15, yPosition, pageWidth - margin - 15, yPosition);
+    yPosition += 5.5;
 
-    // Encabezado de tabla
-    doc.setFont(undefined, 'bold');
-    doc.text('Producto', 14, y);
-    doc.text('Cant.', 60, y);
-    doc.text('Base', 80, y);
-    doc.text('Imp. %', 105, y);
-    doc.text('Precio', 125, y);
-    doc.text('Total', 150, y);
-    doc.setFont(undefined, 'normal');
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(60, 60, 60);
+    if (company.address) { centerText(company.address, yPosition); yPosition += 3.5; }
+    if (company.nit) { centerText(`NIT: ${company.nit}`, yPosition); yPosition += 3.5; }
+    if (company.phone) { centerText(`Tel: ${company.phone}`, yPosition); yPosition += 3.5; }
+    if (!company.address && !company.nit && !company.phone) yPosition += 3.5;
+    yPosition += 6;
 
-    y += 6;
+    // Caja para factura con fondo gris suave
+    doc.setFillColor(245, 245, 246);
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.5);
+    doc.roundedRect(margin, yPosition, contentWidth, 10, 2, 2, 'FD');
 
-    const items = saleInvoice.invoiceProducts || [];
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(0, 0, 0);
+    centerText('FACTURA DE COMPRA', yPosition + 4);
 
-    for (const item of items) {
-      const name = item.product?.name || 'Producto';
-      const quantity = item.quantity ?? 0;
-      const basePrice = item.product?.purchasePrice ?? 0;
-      const tax = item.product?.tax ?? 0;
-      const price = item.product?.salePrice ?? 0;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(90, 90, 90);
+    centerText(`Fecha: ${new Date(saleInvoice.date).toLocaleDateString('es-CO', {
+      day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    })}`, yPosition + 8);
+    yPosition += 15;
 
-      const itemTotal = quantity * price;
+    // === INFORMACIÓN DEL CLIENTE ===
+    doc.setFillColor(250, 250, 251);
+    doc.setDrawColor(220, 222, 230);
+    doc.setLineWidth(0.3);
+    doc.roundedRect(margin, yPosition, contentWidth, 12, 1.5, 1.5, 'FD');
 
-      doc.text(name, 14, y);
-      doc.text(quantity.toString(), 60, y);
-      doc.text(basePrice.toFixed(2), 80, y);
-      doc.text(tax.toString(), 105, y);
-      doc.text(price.toFixed(2), 125, y);
-      doc.text(itemTotal.toFixed(2), 150, y);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(7.5);
+    doc.setTextColor(0, 0, 0);
+    doc.text('CLIENTE', margin + 2.5, yPosition + 4);
 
-      y += 6;
-      if (y > 280) {
-        doc.addPage();
-        y = 20;
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8.5);
+    doc.setTextColor(20, 20, 20);
+    const clientName = `${client.firstName || ''} ${client.lastName || ''}`.toUpperCase();
+    const clientLines = doc.splitTextToSize(clientName, contentWidth - 5);
+    doc.text(clientLines, margin + 2.5, yPosition + 8.5);
+    yPosition += 17;
+
+    // === ENCABEZADO DE PRODUCTOS ===
+    doc.setFillColor(0, 0, 0);
+    doc.roundedRect(margin, yPosition, contentWidth, 7, 1.5, 1.5, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(255, 255, 255);
+    centerText('PRODUCTOS', yPosition + 4.5);
+    yPosition += 11.5;
+
+    // === LISTA DE PRODUCTOS ===
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+
+    items.forEach((item, index) => {
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      const productName = item.name.length > 24 ? item.name.substring(0, 24) + '...' : item.name;
+      doc.text(productName, margin + 1, yPosition);
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(80, 80, 80);
+      doc.setFontSize(7);
+      const unitPrice = item.price.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      doc.text(`${item.quantity}kg x $${unitPrice}`, margin + 1, yPosition + 3.5);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
+      const totalItem = (item.quantity * item.price).toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+      rightAlignText(`$${totalItem}`, yPosition, 8);
+
+      yPosition += 5.5;
+      if (index < items.length - 1) {
+        doc.setDrawColor(230, 232, 238);
+        doc.setLineWidth(0.2);
+        doc.line(margin + 1, yPosition, pageWidth - margin - 1, yPosition);
       }
-    }
+      yPosition += 1.5;
+    });
 
-    // Total final
-    y += 10;
-    doc.setFont(undefined, 'bold');
-    doc.text(`Total a Pagar: ${saleInvoice.totalPrice.toFixed(2)} COP`, 14, y);
+    // === TOTALES ===
+    yPosition += 1.5;
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.6);
+    doc.line(margin, yPosition, pageWidth - margin, yPosition);
+    yPosition += 5;
+
+    doc.setFillColor(0, 0, 0);
+    doc.roundedRect(margin, yPosition - 2, contentWidth, 10, 2, 2, 'F');
+
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(11);
+    doc.text('TOTAL', margin + 3, yPosition + 4);
+
+    const totalText = `$${Math.round(total).toLocaleString('es-CO')}`;
+    doc.setFontSize(13);
+    const totalWidth = doc.getTextWidth(totalText);
+    doc.text(totalText, pageWidth - margin - totalWidth - 3, yPosition + 4);
+
+    yPosition += 14;
+
+    // === MENSAJE FINAL ===
+    doc.setDrawColor(0, 0, 0);
+    doc.setLineWidth(0.4);
+    doc.line(margin + 15, yPosition, pageWidth - margin - 15, yPosition);
+    yPosition += 4.5;
+
+    doc.setTextColor(0, 0, 0);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    centerText('¡Gracias por su compra!', yPosition);
+    yPosition += 4;
+
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(130, 130, 140);
+    centerText('Lo esperamos pronto', yPosition);
 
     const pdfBuffer = doc.output('arraybuffer');
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="Factura_${saleInvoice.id}.pdf"`);
+    res.setHeader('Content-Disposition', `inline; filename="Factura_${saleInvoice.id}.pdf"`);
     res.send(Buffer.from(pdfBuffer));
   } catch (error) {
     logger.error('Error al generar PDF:', error);
@@ -354,21 +541,116 @@ const updateSaleInvoice = async (req, res) => {
       clientId,
       date,
       totalPrice,
-      electronicBill
+      electronicBill,
+      items, // [{ id: saleProductInvoiceId, productId?, quantity?, unitPrice? }]
     } = req.body;
 
     const existingSaleInvoice = await prisma.saleInvoice.findUnique({
       where: { id },
-      select: { tenantId: true, electronicBill: true  }
+      include: { invoiceProducts: { include: { product: true } } }
     });
-    
+
     if (!existingSaleInvoice) {
       return res.status(404).json({ error: 'Factura de venta no encontrada' });
     }
-    
+
     if (req.user.role !== 'SUPERADMIN' && existingSaleInvoice.tenantId !== req.user.tenantId) {
       logger.warn(`Intento de actualización no autorizado. Usuario: ${req.user.id}, Factura de venta: ${id}`);
       return res.status(403).json({ error: 'No autorizado para modificar esta Factura de venta' });
+    }
+
+    let newTotalPrice = totalPrice;
+
+    // Editar uno o varios ítems de la factura: producto, cantidad y/o precio unitario,
+    // ajustando stock, balance y el lote FIFO en consecuencia.
+    if (Array.isArray(items) && items.length > 0) {
+      const itemsById = new Map(existingSaleInvoice.invoiceProducts.map((p) => [p.id, p]));
+
+      // Validar todos antes de tocar nada: cada ítem debe existir y no haber sido consumido por una entrega
+      for (const edit of items) {
+        const item = itemsById.get(edit.id);
+        if (!item) {
+          return res.status(404).json({ error: `Ítem de factura no encontrado: ${edit.id}` });
+        }
+        const consumptionCount = await prisma.deliveryConsumption.count({
+          where: { saleProductInvoiceId: item.id }
+        });
+        if (consumptionCount > 0) {
+          return res.status(400).json({
+            error: `No se puede editar "${item.product.name}": ya fue consumido por una entrega. Elimina primero esa entrega.`
+          });
+        }
+      }
+
+      await prisma.$transaction(async (tx) => {
+        for (const edit of items) {
+          const item = itemsById.get(edit.id);
+          const oldQty = Number(item.quantity);
+          const oldUnitPrice = Number(item.unitPrice || 0);
+          const newQty = edit.quantity !== undefined ? Number(edit.quantity) : oldQty;
+          const newUnitPrice = edit.unitPrice !== undefined ? Number(edit.unitPrice) : oldUnitPrice;
+          const newProductId = edit.productId || item.productId;
+          const productChanged = newProductId !== item.productId;
+
+          await tx.saleProductInvoice.update({
+            where: { id: item.id },
+            data: {
+              productId: newProductId,
+              quantity: newQty,
+              unitPrice: newUnitPrice,
+              remainingQuantity: newQty,
+            },
+          });
+
+          if (productChanged) {
+            const newProduct = await tx.product.findUnique({ where: { id: newProductId } });
+
+            // Revertir stock/categoría del producto anterior por completo
+            const oldField = getCompanyQuantityField(item.product.name);
+            if (oldField) {
+              await tx.company.update({
+                where: { id: existingSaleInvoice.tenantId },
+                data: { [oldField]: { decrement: oldQty } },
+              });
+            }
+            await tx.product.update({ where: { id: item.productId }, data: { stock: { decrement: oldQty } } });
+
+            // Aplicar stock/categoría al producto nuevo por completo
+            const newField = getCompanyQuantityField(newProduct.name);
+            if (newField) {
+              await tx.company.update({
+                where: { id: existingSaleInvoice.tenantId },
+                data: { [newField]: { increment: newQty } },
+              });
+            }
+            await tx.product.update({ where: { id: newProductId }, data: { stock: { increment: newQty } } });
+          } else {
+            const qtyDiff = newQty - oldQty;
+            if (qtyDiff !== 0) {
+              const companyField = getCompanyQuantityField(item.product.name);
+              if (companyField) {
+                await tx.company.update({
+                  where: { id: existingSaleInvoice.tenantId },
+                  data: { [companyField]: { increment: qtyDiff } },
+                });
+              }
+              await tx.product.update({ where: { id: item.productId }, data: { stock: { increment: qtyDiff } } });
+            }
+          }
+
+          const priceDiff = (newQty * newUnitPrice) - (oldQty * oldUnitPrice);
+          if (priceDiff !== 0) {
+            await tx.company.update({
+              where: { id: existingSaleInvoice.tenantId },
+              data: { currentBalance: { decrement: priceDiff } },
+            });
+          }
+        }
+      });
+
+      // Recalcular el total de la factura sumando TODOS sus ítems (editados y no editados)
+      const refreshedItems = await prisma.saleProductInvoice.findMany({ where: { invoiceId: id } });
+      newTotalPrice = refreshedItems.reduce((s, p) => s + Number(p.quantity) * Number(p.unitPrice || 0), 0);
     }
 
     const updatedSaleInvoice = await prisma.saleInvoice.update({
@@ -376,7 +658,7 @@ const updateSaleInvoice = async (req, res) => {
       data: {
         clientId,
         date: date ? new Date(date) : undefined,
-        totalPrice,
+        totalPrice: newTotalPrice,
         electronicBill
       },
     });
@@ -452,9 +734,10 @@ const searchInvoicesByDateRange = async (req, res) => {
       return res.status(400).json({ error: 'Se requieren las fechas de inicio y fin' });
     }
 
-    const start = new Date(`${startDate}T00:00:00`);
-    const end = new Date(`${endDate}T23:59:59.999`);
-    end.setHours(23, 59, 59, 999);
+    // Anclado a hora de Colombia (UTC-5, sin DST) sin importar la zona horaria del servidor,
+    // para que una compra hecha en la noche caiga en el día correcto al buscarla.
+    const start = new Date(`${startDate}T00:00:00-05:00`);
+    const end = new Date(`${endDate}T23:59:59.999-05:00`);
 
     if (isNaN(start.getTime()) || isNaN(end.getTime())) {
       return res.status(400).json({ error: 'Fechas inválidas' });

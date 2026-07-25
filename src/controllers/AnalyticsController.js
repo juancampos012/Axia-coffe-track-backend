@@ -35,7 +35,8 @@ const getDashboardMetrics = async (req, res) => {
       recentInvoices,
       salesStats,
       topProductsRaw,
-      operationStats
+      operationStats,
+      totalPaidByProduct
     ] = await Promise.all([
       // Stock Físico desde el modelo Company
       prisma.company.findUnique({
@@ -74,16 +75,51 @@ const getDashboardMetrics = async (req, res) => {
       Promise.all([
         prisma.loan.aggregate({ where: { tenantId, status: false }, _sum: { amount: true } }),
         prisma.announcement.count({ where: { tenantId, isActive: true } })
-      ])
+      ]),
+      // Valor real de los lotes de compra aún no entregados (FIFO), por producto
+      prisma.$queryRaw`
+        SELECT
+          p.name,
+          SUM(spi."remainingQuantity") as "remainingQuantity",
+          SUM(spi."remainingQuantity" * COALESCE(spi."unitPrice", p."purchasePrice", 0)) as "remainingValue"
+        FROM "SaleProductInvoice" spi
+        JOIN "Product" p ON p.id = spi."productId"
+        WHERE spi."tenantId" = ${tenantId} AND spi."remainingQuantity" > 0
+        GROUP BY p.name
+      `
     ]);
 
-    // Enriquecer productos con nombre
+    // Enriquecer productos con nombre, precio unitario y valor total
     const topProducts = await Promise.all(
       topProductsRaw.map(async (item) => {
-        const p = await prisma.product.findUnique({ where: { id: item.productId }, select: { name: true } });
-        return { name: p?.name, total: item._sum.quantity };
+        const p = await prisma.product.findUnique({ 
+          where: { id: item.productId }, 
+          select: { name: true, purchasePrice: true, salePrice: true } 
+        });
+        const quantity = Number(item._sum.quantity || 0);
+        const unitPrice = Number(p?.purchasePrice || 0);
+        return { 
+          name: p?.name, 
+          total: quantity,
+          unitPrice,
+          totalValue: quantity * unitPrice
+        };
       })
     );
+
+    // Valor real del inventario = suma de lotes de compra aún no entregados (FIFO), por categoría
+    const categoryValues = { coffee: 0, wetCoffee: 0, bean: 0, pasilla: 0, cacao: 0 };
+    if (totalPaidByProduct) {
+      for (const row of totalPaidByProduct) {
+        const name = (row.name || '').toLowerCase();
+        const value = parseFloat(String(row.remainingValue)) || 0;
+        if (name.includes("cafe") && !name.includes("mojado")) categoryValues.coffee += value;
+        else if (name.includes("mojado")) categoryValues.wetCoffee += value;
+        else if (name.includes("frijol") || name.includes("almendra")) categoryValues.bean += value;
+        else if (name.includes("pasilla")) categoryValues.pasilla += value;
+        else if (name.includes("cacao")) categoryValues.cacao += value;
+      }
+    }
 
     const response = {
       inventory: {
@@ -94,7 +130,8 @@ const getDashboardMetrics = async (req, res) => {
           bean: companyData?.beanQuantity || 0,
           pasilla: companyData?.pasillaQuantity || 0,
           cacao: companyData?.cacaoQuantity || 0,
-        }
+        },
+        categoryValues
       },
       sales: {
         totalRevenue: salesStats._sum.totalPrice || 0,
@@ -218,10 +255,81 @@ const getProfitabilityMetrics = async (req, res) => {
   }
 };
 
+// --- INGRESOS (abonos que nos hacen) Y EGRESOS (gastos) EN UN RANGO DE FECHAS ---
+
+const getCashMovements = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const tenantId = req.user.tenantId;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({ error: 'Se requieren las fechas de inicio y fin' });
+    }
+
+    // Anclado a hora de Colombia (UTC-5), igual que el resto de búsquedas por rango de fechas
+    const start = new Date(`${startDate}T00:00:00-05:00`);
+    const end = new Date(`${endDate}T23:59:59.999-05:00`);
+
+    const [clientPayments, partnerPayments, supplierPayments, expenses] = await Promise.all([
+      prisma.clientAccountPayment.findMany({
+        where: { tenantId, createdAt: { gte: start, lte: end } },
+        include: { account: { include: { client: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.partnerAccountPayment.findMany({
+        where: { tenantId, createdAt: { gte: start, lte: end } },
+        include: { account: { include: { partner: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.supplierAccountPayment.findMany({
+        where: { tenantId, createdAt: { gte: start, lte: end } },
+        include: { account: { include: { supplier: true } } },
+        orderBy: { createdAt: 'asc' },
+      }),
+      prisma.expense.findMany({
+        where: { tenantId, createdAt: { gte: start, lte: end } },
+        orderBy: { createdAt: 'asc' },
+      }),
+    ]);
+
+    const incomes = [
+      ...clientPayments.map((p) => ({
+        date: p.createdAt,
+        name: `${p.account?.client?.firstName || ''} ${p.account?.client?.lastName || ''}`.trim() || 'Cliente',
+        description: p.description || '',
+        amount: Number(p.amount),
+      })),
+      ...partnerPayments.map((p) => ({
+        date: p.createdAt,
+        name: p.account?.partner?.name || 'Aliado',
+        description: p.description || '',
+        amount: Number(p.amount),
+      })),
+      ...supplierPayments.map((p) => ({
+        date: p.createdAt,
+        name: p.account?.supplier?.name || 'Proveedor',
+        description: p.description || '',
+        amount: Number(p.amount),
+      })),
+    ].sort((a, b) => new Date(a.date) - new Date(b.date));
+
+    const outcomes = expenses.map((e) => ({
+      date: e.createdAt,
+      description: e.description || '',
+      amount: Number(e.amount),
+    }));
+
+    return res.status(200).json({ incomes, expenses: outcomes });
+  } catch (error) {
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 // --- MÉTODOS ADICIONALES REQUERIDOS POR RUTAS ---
 
 module.exports = {
   getDashboardMetrics,
+  getCashMovements,
   getSalesMetrics,
   getOperationMetrics,
   getInventorySummary,
