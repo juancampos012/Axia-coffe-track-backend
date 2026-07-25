@@ -203,7 +203,14 @@ const logout = async (req, res) => {
       data: { token },
     });
 
-    res.clearCookie('authToken');
+    // Debe llevar exactamente las mismas opciones (domain/secure/sameSite) que se usaron
+    // al crear la cookie en el login; si no, el navegador no la reconoce y no la borra.
+    res.clearCookie('authToken', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      domain: process.env.COOKIE_DOMAIN || undefined,
+    });
 
     logger.info(`Logout exitoso - Token revocado: ${token.slice(-8)}... | IP: ${req.ip}`);
     return res.status(200).json({ message: 'Sesión cerrada con éxito' });
