@@ -200,10 +200,11 @@ const deleteSaleInvoice = async (req, res) => {
         }
       }
 
-      // Reversar dinero
+      // Reversar dinero: al crear la factura se resta (se le paga al productor),
+      // así que al eliminarla hay que devolver ese dinero al balance.
       await tx.company.update({
         where: { id: invoice.tenantId },
-        data: { currentBalance: { decrement: invoice.totalPrice } }
+        data: { currentBalance: { increment: invoice.totalPrice } }
       });
 
       await tx.saleProductInvoice.deleteMany({ where: { invoiceId: id } });
