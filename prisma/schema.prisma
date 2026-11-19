@@ -108,6 +108,14 @@ model Client {
   phone            String?
   email            String?
 
+  // Nullable: los clientes creados antes de este cambio no tienen estos datos
+  birthDate          DateTime? @db.Date
+  farmName           String?   @db.VarChar(80)
+  farmVereda         String?   @db.VarChar(80)
+  farmTotalHectares  Decimal?  @db.Decimal(10, 2)
+  farmCoffeeHectares Decimal?  @db.Decimal(10, 2)
+  coffeeTrees        Int?
+
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 

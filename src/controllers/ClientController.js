@@ -1,22 +1,53 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 const logger = require('../config/logger');
+const { ValidationError, validateCreateClient, validateUpdateClient, serializeClient } = require('../utils/clientValidation');
+
+const CLIENT_FIELDS = {
+  id: true,
+  tenantId: true,
+  identification: true,
+  firstName: true,
+  middleName: true,
+  lastName: true,
+  secondLastName: true,
+  phone: true,
+  email: true,
+  birthDate: true,
+  farmName: true,
+  farmVereda: true,
+  farmTotalHectares: true,
+  farmCoffeeHectares: true,
+  coffeeTrees: true,
+  createdAt: true,
+};
+
+// Errores de validación o de unicidad: { message } legible para el alert del frontend
+const handleClientWriteError = (error, res) => {
+  if (error instanceof ValidationError) return res.status(400).json({ message: error.message });
+  if (error.code === 'P2002') {
+    return res.status(409).json({ message: 'Ya existe un cliente con esa identificación.' });
+  }
+  return null;
+};
 
 const createClient = async (req, res) => {
   try {
-    const { tenantId, identification, firstName, middleName, lastName, secondLastName, phone, email } = req.body;
+    const { tenantId } = req.body;
+    const data = validateCreateClient(req.body);
     const clientCompany = await prisma.company.findUnique({ where: { id: tenantId } });
 
-    if (!clientCompany) return res.status(404).json({ error: 'Empresa no encontrada' });
+    if (!clientCompany) return res.status(404).json({ error: 'Empresa no encontrada', message: 'Empresa no encontrada' });
 
     const newClient = await prisma.client.create({
       data: {
-        identification, firstName, middleName, lastName, secondLastName, phone, email,
+        ...data,
         tenant: { connect: { id: tenantId } },
       }
     });
-    return res.status(201).json(newClient);
+    return res.status(201).json(serializeClient(newClient));
   } catch (error) {
+    if (handleClientWriteError(error, res)) return;
     logger.error('Error al crear Cliente:', error);
     return res.status(500).json({ error: 'Error interno' });
   }
@@ -28,17 +59,9 @@ const getClients = async (req, res) => {
     const where = req.user.role === 'SUPERADMIN' ? {} : { tenantId };
     const clients = await prisma.client.findMany({
       where,
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        phone: true,
-        email: true,
-        identification: true,
-        createdAt: true,
-      },
+      select: CLIENT_FIELDS,
     });
-    return res.status(200).json(clients);
+    return res.status(200).json(clients.map(serializeClient));
   } catch (error) {
     return res.status(500).json({ error: 'Error al obtener clientes' });
   }
@@ -53,7 +76,7 @@ const getClientById = async (req, res) => {
       include: { tenant: true, invoices: true, announcements: true },
     });
     if (!client) return res.status(404).json({ error: 'No encontrado' });
-    return res.status(200).json(client);
+    return res.status(200).json(serializeClient(client));
   } catch (error) {
     return res.status(500).json({ error: 'Error al obtener cliente' });
   }
@@ -62,19 +85,24 @@ const getClientById = async (req, res) => {
 const updateClient = async (req, res) => {
   try {
     const { id } = req.params;
-    const { identification, firstName, middleName, lastName, secondLastName, phone, email } = req.body;
 
-    const existingClient = await prisma.client.findUnique({ where: { id }, select: { tenantId: true } });
+    const existingClient = await prisma.client.findUnique({
+      where: { id },
+      select: { tenantId: true, farmTotalHectares: true, farmCoffeeHectares: true },
+    });
     if (!existingClient || (req.user.role !== 'SUPERADMIN' && existingClient.tenantId !== req.user.tenantId)) {
       return res.status(403).json({ error: 'No autorizado' });
     }
 
+    const data = validateUpdateClient(req.body, existingClient);
     const updatedClient = await prisma.client.update({
       where: { id },
-      data: { identification, firstName, middleName, lastName, secondLastName, phone, email },
+      data,
     });
-    return res.status(200).json(updatedClient);
+    return res.status(200).json(serializeClient(updatedClient));
   } catch (error) {
+    if (handleClientWriteError(error, res)) return;
+    logger.error('Error al actualizar Cliente:', error);
     return res.status(500).json({ error: 'Error al actualizar' });
   }
 };
@@ -163,7 +191,7 @@ const searchClientsByName = async (req, res) => {
         }
       }
     });
-    return res.status(200).json(clients);
+    return res.status(200).json(clients.map(serializeClient));
   } catch (error) {
     logger.error('Error en búsqueda de clientes:', error);
     return res.status(500).json({ error: 'Error en búsqueda' });
